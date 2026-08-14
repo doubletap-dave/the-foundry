@@ -78,10 +78,7 @@ function parseEasingParameters(string) {
   return match ? match[1].split(',').map(function (p) { return parseFloat(p); }) : [];
 }
 
-// Spring solver inspired by Webkit Copyright © 2016 Apple Inc. All rights reserved. https://webkit.org/demos/spring/spring.js
-
 function spring(string, duration) {
-
   var params = parseEasingParameters(string);
   var mass = minMax(is.und(params[0]) ? 1 : params[0], .1, 100);
   var stiffness = minMax(is.und(params[1]) ? 100 : params[1], .1, 100);
@@ -92,7 +89,6 @@ function spring(string, duration) {
   var wd = zeta < 1 ? w0 * Math.sqrt(1 - zeta * zeta) : 0;
   var a = 1;
   var b = zeta < 1 ? (zeta * w0 + -velocity) / wd : -velocity + w0;
-
   function solver(t) {
     var progress = duration ? (duration * t) / 1000 : t;
     if (zeta < 1) {
@@ -103,7 +99,6 @@ function spring(string, duration) {
     if (t === 0 || t === 1) { return t; }
     return 1 - progress;
   }
-
   function getDuration() {
     var cached = cache.springs[string];
     if (cached) { return cached; }
@@ -123,33 +118,22 @@ function spring(string, duration) {
     cache.springs[string] = duration;
     return duration;
   }
-
   return duration ? solver : getDuration;
-
 }
-
-// Basic steps easing implementation https://developer.mozilla.org/fr/docs/Web/CSS/transition-timing-function
 
 function steps(steps) {
   if ( steps === void 0 ) steps = 10;
-
   return function (t) { return Math.ceil((minMax(t, 0.000001, 1)) * steps) * (1 / steps); };
 }
 
-// BezierEasing https://github.com/gre/bezier-easing
-
 var bezier = (function () {
-
   var kSplineTableSize = 11;
   var kSampleStepSize = 1.0 / (kSplineTableSize - 1.0);
-
   function A(aA1, aA2) { return 1.0 - 3.0 * aA2 + 3.0 * aA1 }
   function B(aA1, aA2) { return 3.0 * aA2 - 6.0 * aA1 }
   function C(aA1)      { return 3.0 * aA1 }
-
   function calcBezier(aT, aA1, aA2) { return ((A(aA1, aA2) * aT + B(aA1, aA2)) * aT + C(aA1)) * aT }
   function getSlope(aT, aA1, aA2) { return 3.0 * A(aA1, aA2) * aT * aT + 2.0 * B(aA1, aA2) * aT + C(aA1) }
-
   function binarySubdivide(aX, aA, aB, mX1, mX2) {
     var currentX, currentT, i = 0;
     do {
@@ -159,7 +143,6 @@ var bezier = (function () {
     } while (Math.abs(currentX) > 0.0000001 && ++i < 10);
     return currentT;
   }
-
   function newtonRaphsonIterate(aX, aGuessT, mX1, mX2) {
     for (var i = 0; i < 4; ++i) {
       var currentSlope = getSlope(aGuessT, mX1, mX2);
@@ -169,34 +152,25 @@ var bezier = (function () {
     }
     return aGuessT;
   }
-
   function bezier(mX1, mY1, mX2, mY2) {
-
     if (!(0 <= mX1 && mX1 <= 1 && 0 <= mX2 && mX2 <= 1)) { return; }
     var sampleValues = new Float32Array(kSplineTableSize);
-
     if (mX1 !== mY1 || mX2 !== mY2) {
       for (var i = 0; i < kSplineTableSize; ++i) {
         sampleValues[i] = calcBezier(i * kSampleStepSize, mX1, mX2);
       }
     }
-
     function getTForX(aX) {
-
       var intervalStart = 0;
       var currentSample = 1;
       var lastSample = kSplineTableSize - 1;
-
       for (; currentSample !== lastSample && sampleValues[currentSample] <= aX; ++currentSample) {
         intervalStart += kSampleStepSize;
       }
-
       --currentSample;
-
       var dist = (aX - sampleValues[currentSample]) / (sampleValues[currentSample + 1] - sampleValues[currentSample]);
       var guessForT = intervalStart + dist * kSampleStepSize;
       var initialSlope = getSlope(guessForT, mX1, mX2);
-
       if (initialSlope >= 0.001) {
         return newtonRaphsonIterate(aX, guessForT, mX1, mX2);
       } else if (initialSlope === 0.0) {
@@ -204,27 +178,18 @@ var bezier = (function () {
       } else {
         return binarySubdivide(aX, intervalStart, intervalStart + kSampleStepSize, mX1, mX2);
       }
-
     }
-
     return function (x) {
       if (mX1 === mY1 && mX2 === mY2) { return x; }
       if (x === 0 || x === 1) { return x; }
       return calcBezier(getTForX(x), mY1, mY2);
     }
-
   }
-
   return bezier;
-
 })();
 
 var penner = (function () {
-
-  // Based on jQuery UI's implemenation of easing equations from Robert Penner (http://www.robertpenner.com/easing)
-
   var eases = { linear: function () { return function (t) { return t; }; } };
-
   var functionEasings = {
     Sine: function () { return function (t) { return 1 - Math.cos(t * Math.PI / 2); }; },
     Expo: function () { return function (t) { return t ? Math.pow(2, 10 * t - 10) : 0; }; },
@@ -238,7 +203,6 @@ var penner = (function () {
     Elastic: function (amplitude, period) {
       if ( amplitude === void 0 ) amplitude = 1;
       if ( period === void 0 ) period = .5;
-
       var a = minMax(amplitude, 1, 10);
       var p = minMax(period, .1, 2);
       return function (t) {
@@ -247,13 +211,10 @@ var penner = (function () {
       }
     }
   };
-
   var baseEasings = ['Quad', 'Cubic', 'Quart', 'Quint'];
-
   baseEasings.forEach(function (name, i) {
     functionEasings[name] = function () { return function (t) { return Math.pow(t, i + 2); }; };
   });
-
   Object.keys(functionEasings).forEach(function (name) {
     var easeIn = functionEasings[name];
     eases['easeIn' + name] = easeIn;
@@ -263,9 +224,7 @@ var penner = (function () {
     eases['easeOutIn' + name] = function (a, b) { return function (t) { return t < 0.5 ? (1 - easeIn(a, b)(1 - t * 2)) / 2 : 
       (easeIn(a, b)(t * 2 - 1) + 1) / 2; }; };
   });
-
   return eases;
-
 })();
 
 function parseEasings(easing, duration) {
@@ -281,8 +240,6 @@ function parseEasings(easing, duration) {
   }
 }
 
-// Strings
-
 function selectString(str) {
   try {
     var nodes = document.querySelectorAll(str);
@@ -291,8 +248,6 @@ function selectString(str) {
     return;
   }
 }
-
-// Arrays
 
 function filterArray(arr, callback) {
   var len = arr.length;
@@ -324,8 +279,6 @@ function arrayContains(arr, val) {
   return arr.some(function (a) { return a === val; });
 }
 
-// Objects
-
 function cloneObject(o) {
   var clone = {};
   for (var p in o) { clone[p] = o[p]; }
@@ -343,8 +296,6 @@ function mergeObjects(o1, o2) {
   for (var p in o2) { o[p] = is.und(o1[p]) ? o2[p] : o1[p]; }
   return o;
 }
-
-// Colors
 
 function rgbToRgba(rgbValue) {
   var rgb = /rgb\((\d+,\s*[\d]+,\s*[\d]+)\)/g.exec(rgbValue);
@@ -405,8 +356,6 @@ function getTransformUnit(propName) {
   if (stringContains(propName, 'translate') || propName === 'perspective') { return 'px'; }
   if (stringContains(propName, 'rotate') || stringContains(propName, 'skew')) { return 'deg'; }
 }
-
-// Values
 
 function getFunctionValue(val, animatable) {
   if (!is.fnc(val)) { return val; }
@@ -499,3 +448,5 @@ function validateValue(val, unit) {
   if (unit) { return unitLess + unit; }
   return unitLess;
 }
+
+export default anime;
