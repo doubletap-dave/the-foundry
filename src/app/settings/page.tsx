@@ -23,7 +23,7 @@ export default async function SettingsPage() {
       <SettingsEsc />
       <Link
         href="/"
-        className="absolute left-6 top-6 text-2xl font-medium tracking-tight text-zinc-500 hover:text-zinc-200 md:text-3xl lg:text-4xl"
+        className="foundry-ink absolute left-6 top-6 text-2xl font-medium tracking-tight text-zinc-500 hover:text-zinc-200 md:text-3xl lg:text-4xl"
       >
         The Foundry
       </Link>
@@ -47,14 +47,14 @@ export default async function SettingsPage() {
           />
         </section>
         <p className="flex items-center gap-6 text-sm text-zinc-700">
-          <Link href="/" className="hover:text-zinc-400">
+          <Link href="/" className="foundry-ink text-zinc-700 hover:text-zinc-300">
             esc
           </Link>
           <a
             href="https://github.com/doubletap-dave/the-foundry"
             target="_blank"
             rel="noreferrer"
-            className="hover:text-zinc-400"
+            className="foundry-ink text-zinc-700 hover:text-zinc-300"
           >
             github
           </a>

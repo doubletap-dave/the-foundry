@@ -4,6 +4,7 @@ import anime from "@/vendor/anime.js";
 
 export function ink(el: HTMLElement | null, to: string, duration = 340) {
   if (!el) return;
+  el.style.color = to;
   anime.remove(el);
   anime({
     targets: el,
