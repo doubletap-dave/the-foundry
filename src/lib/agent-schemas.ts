@@ -76,13 +76,13 @@ export const INTERPRET_HINT = `{
 take is ONE paragraph. Not a list. Not three options. Not a plan. Do not write packet or steps.`;
 
 export const PACKET_HINT = `{
-  "build": "1. Open … and type …\\n2. Next concrete move.\\n3. Keep going until the sitting is done. Numbered markdown steps, not one sentence.",
-  "dont": "what you refuse this sitting",
+  "build": "1. Open the repo and …\\n2. Next concrete move the agent types or creates.\\n3. Keep going until the sitting is done.",
+  "dont": "Hard refusals. What the agent must not do this sitting.",
   "stack": "Next.js / TypeScript / local SQLite",
-  "stopWhen": "the moment you know enough to keep or kill it",
-  "files": "optional. what exists on disk or on screen when you stop"
+  "stopWhen": "the moment the agent should stop, even if more is possible",
+  "files": "Concrete paths or screens that exist when the sitting is over."
 }
-build is a numbered list of real steps. This is a 1–4 hour sitting, not a product brief. No hypothesis. No Experiment #.`;
+The reader is an AI coding agent. build is numbered imperative steps it can execute. dont is hard refusals. No pitch. No hypothesis. No Experiment #.`;
 
 export type SparkThoughtAgent = "scout" | "contrarian" | "maker";
 export type SparkPhase = "scout" | "contrarian" | "interpret" | "packet";

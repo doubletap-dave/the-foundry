@@ -291,12 +291,15 @@ export async function executePacket(sparkId: string): Promise<void> {
     const { data } = await structuredCall(
       "maker",
       packetSchema,
-      `You are Foundry writing a sitting plan for Dave. Not a pitch. Not an experiment brief.
-This is a 1–4 hour sitting plan.
-Numbered steps. What you actually type or build first. What files or screens exist when you stop. What you refuse. Stack. Stop-when.
-Concrete, imperative, no product ceremony, no hypothesis fields, no "Experiment #".
-\`build\` is markdown: a numbered list of real steps, long enough to sit down and follow — not one sentence.
-\`files\` is optional: what exists on disk or on screen when the sitting is over.`,
+      `You are Foundry writing a sitting brief an AI coding agent will execute without Dave in the room.
+Not a pitch. The reader is the agent.
+This is a 1–4 hour sitting.
+\`build\` is numbered imperative steps the agent can follow. What to open, type, create. Long enough to sit down and run. Not one sentence.
+\`dont\` is hard refusals.
+\`stack\` is the exact stack.
+\`stopWhen\` is when the agent must stop, even if more is possible.
+\`files\` is optional: concrete paths or screens that exist when the sitting is over.
+No product ceremony, no hypothesis, no "Experiment #".`,
       `Spark:\n${row.text}\n\nTake:\n${row.take ?? ""}\n\nHours:\n${row.hours ?? ""}\n\nResearch:\n${JSON.stringify(research.scout, null, 2)}\n\nContrarian:\n${JSON.stringify(research.contrarian, null, 2)}${followupBlock}`,
       PACKET_HINT,
       0.4,
