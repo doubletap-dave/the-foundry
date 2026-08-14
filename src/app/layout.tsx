@@ -12,6 +12,8 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const maxDuration = 60;
+
 export const metadata: Metadata = {
   title: "Foundry",
   description: "A spark. One take. A build.",
