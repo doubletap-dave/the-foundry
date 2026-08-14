@@ -84,6 +84,14 @@ export const PACKET_HINT = `{
 }
 build is a numbered list of real steps. This is a 1–4 hour sitting, not a product brief. No hypothesis. No Experiment #.`;
 
+export type SparkThoughtAgent = "scout" | "contrarian" | "maker";
+export type SparkPhase = "scout" | "contrarian" | "interpret" | "packet";
+
+export type SparkThought = {
+  agent: SparkThoughtAgent;
+  lines: string[];
+};
+
 export type SparkView = {
   id: string;
   text: string;
@@ -94,4 +102,6 @@ export type SparkView = {
   legs: string | null;
   error: string | null;
   createdAt?: string;
+  thoughts?: SparkThought[];
+  phase?: SparkPhase;
 };

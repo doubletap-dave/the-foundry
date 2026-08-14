@@ -19,6 +19,7 @@ import type { SparkView } from "@/lib/agent-schemas";
 import { browserHasKeys, readBrowserKeys } from "@/lib/browser-keys";
 import { readBrowserModel } from "@/lib/browser-model";
 import { Md } from "@/components/md";
+import { Looking } from "@/components/looking";
 
 const STORE = "foundry.sparkId";
 
@@ -119,7 +120,7 @@ export function Console({ hasKey }: { hasKey: boolean }) {
   const [spark, setSpark] = useState<SparkView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  const [lookLine, setLookLine] = useState("Looking.");
+  const [phaseHint, setPhaseHint] = useState<"packet" | null>(null);
   const [built, setBuilt] = useState<SparkView[]>([]);
   const [localHas, setLocalHas] = useState(false);
   const [keysReady, setKeysReady] = useState(false);
@@ -132,7 +133,7 @@ export function Console({ hasKey }: { hasKey: boolean }) {
     setText("");
     setError(null);
     setPending(false);
-    setLookLine("Looking.");
+    setPhaseHint(null);
     try {
       sessionStorage.removeItem(STORE);
     } catch {
@@ -161,9 +162,8 @@ export function Console({ hasKey }: { hasKey: boolean }) {
     setError(null);
     const s = screenFrom(next);
     setScreen(s);
-    if (s === "looking") {
-      setLookLine((line) => (line.startsWith("Writing") ? line : "Looking."));
-    }
+    if (s !== "looking") setPhaseHint(null);
+    else if (next.phase === "packet") setPhaseHint(null);
   }, []);
 
   useEffect(() => {
@@ -196,17 +196,18 @@ export function Console({ hasKey }: { hasKey: boolean }) {
 
   useEffect(() => {
     if (screen !== "looking" || !spark?.id) return;
+    const sparkId = spark.id;
     let cancelled = false;
     let inFlight = false;
 
     async function tick() {
-      if (inFlight || cancelled || !spark) return;
+      if (inFlight || cancelled) return;
       inFlight = true;
       try {
-        await advanceSpark(spark.id, readBrowserKeys(), readBrowserModel());
-        const row = await readSpark(spark.id);
+        await advanceSpark(sparkId, readBrowserKeys(), readBrowserModel());
+        const row = await readSpark(sparkId);
         if (cancelled || !row) return;
-        if (row.status !== "looking") applySpark(row);
+        applySpark(row);
       } catch {
         /* keep polling */
       } finally {
@@ -220,17 +221,7 @@ export function Console({ hasKey }: { hasKey: boolean }) {
       cancelled = true;
       window.clearInterval(handle);
     };
-  }, [screen, spark, applySpark]);
-
-  useEffect(() => {
-    if (screen !== "looking") return;
-    const t = window.setTimeout(() => {
-      setLookLine((line) =>
-        line.startsWith("Writing") ? "Still writing the packet." : "Still looking.",
-      );
-    }, 4500);
-    return () => window.clearTimeout(t);
-  }, [screen, spark?.id]);
+  }, [screen, spark?.id, applySpark]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -276,6 +267,7 @@ export function Console({ hasKey }: { hasKey: boolean }) {
     } catch {
       /* ignore */
     }
+    setPhaseHint(null);
     setSpark({
       id: result.sparkId,
       text: trimmed,
@@ -285,8 +277,9 @@ export function Console({ hasKey }: { hasKey: boolean }) {
       packet: null,
       legs: null,
       error: null,
+      phase: "scout",
+      thoughts: [],
     });
-    setLookLine("Looking.");
     setScreen("looking");
   }
 
@@ -294,13 +287,14 @@ export function Console({ hasKey }: { hasKey: boolean }) {
     if (!spark) return;
     setPending(true);
     setError(null);
-    setLookLine("Writing the packet.");
-    setSpark({ ...spark, status: "looking", packet: null });
+    setPhaseHint("packet");
+    setSpark({ ...spark, status: "looking", packet: null, phase: "packet" });
     setScreen("looking");
     const result = await writePacket(spark.id, readBrowserKeys(), readBrowserModel());
     setPending(false);
     if ("error" in result) {
       setError(result.error);
+      setPhaseHint(null);
       setSpark({ ...spark, status: "ready" });
       setScreen("ready");
     }
@@ -316,7 +310,7 @@ export function Console({ hasKey }: { hasKey: boolean }) {
       setError(result.error);
       return;
     }
-    setLookLine("Looking.");
+    setPhaseHint(null);
     setSpark({ ...spark, status: "looking", packet: null });
     setScreen("looking");
   }
@@ -333,7 +327,7 @@ export function Console({ hasKey }: { hasKey: boolean }) {
       setError(result.error);
       return;
     }
-    setLookLine("Looking.");
+    setPhaseHint(null);
     setSpark({ ...spark, status: "looking", packet: null });
     setScreen("looking");
   }
@@ -396,10 +390,10 @@ export function Console({ hasKey }: { hasKey: boolean }) {
           ) : null}
 
           {screen === "looking" ? (
-            <p className="text-sm text-zinc-500">
-              <span className="mr-2 inline-block h-2 w-2 animate-pulse bg-ember/80" />
-              {lookLine}
-            </p>
+            <Looking
+              phase={phaseHint === "packet" ? "packet" : spark?.phase ?? "scout"}
+              thoughts={spark?.thoughts}
+            />
           ) : null}
 
           {screen === "ready" && spark?.take ? (

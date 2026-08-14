@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { modelConfigs, sparks } from "@/db/schema";
-import { packetReadSchema, type Interpretation, type Packet, type SparkView } from "@/lib/agent-schemas";
+import { packetReadSchema, type Interpretation, type Packet, type SparkPhase, type SparkThought, type SparkView } from "@/lib/agent-schemas";
 import type { AgentRole, Provider } from "@/lib/models";
 import type { ContrarianDraft, ScoutDraft } from "@/lib/stubs";
 
@@ -103,9 +103,66 @@ export function getSpark(sparkId: string, owner?: string): SparkRow | null {
   return row;
 }
 
+function shortThought(raw: string, max = 92): string {
+  const cleaned = raw.replace(/\s+/g, " ").trim();
+  if (!cleaned) return "";
+  if (cleaned.length <= max) return cleaned;
+  return `${cleaned.slice(0, max - 1).trimEnd()}…`;
+}
+
+function pickThoughtLines(pools: Array<string[] | undefined>, n = 2): string[] {
+  const out: string[] = [];
+  for (const pool of pools) {
+    if (!pool) continue;
+    for (const item of pool) {
+      const line = shortThought(item);
+      if (!line || out.includes(line)) continue;
+      out.push(line);
+      if (out.length >= n) return out;
+      break;
+    }
+  }
+  return out;
+}
+
+function researchPhase(row: SparkRow, research: SparkResearch): SparkPhase {
+  const writingPacket =
+    research.packetPending || (row.status === "looking" && research.packetPending);
+  if (writingPacket) return "packet";
+  if (!research.scout) return "scout";
+  if (!research.contrarian) return "contrarian";
+  return "interpret";
+}
+
+function researchThoughts(research: SparkResearch): SparkThought[] {
+  const thoughts: SparkThought[] = [];
+  if (research.scout) {
+    thoughts.push({
+      agent: "scout",
+      lines: pickThoughtLines([
+        research.scout.openings,
+        research.scout.existing,
+        research.scout.notPossible,
+      ]),
+    });
+  }
+  if (research.contrarian) {
+    thoughts.push({
+      agent: "contrarian",
+      lines: pickThoughtLines([
+        research.contrarian.obviousVersions,
+        research.contrarian.angles,
+        research.contrarian.whyBad,
+      ]),
+    });
+  }
+  return thoughts;
+}
+
 export function toSparkView(row: SparkRow): SparkView {
   const created =
     row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt);
+  const research = parseResearch(row.research);
   return {
     id: row.id,
     text: row.text,
@@ -116,6 +173,8 @@ export function toSparkView(row: SparkRow): SparkView {
     legs: row.legs,
     error: row.error,
     createdAt: created,
+    phase: researchPhase(row, research),
+    thoughts: researchThoughts(research),
   };
 }
 
