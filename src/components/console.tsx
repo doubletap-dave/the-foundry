@@ -389,13 +389,23 @@ export function Console({ hasKey }: { hasKey: boolean }) {
       </main>
 
       <footer className="absolute bottom-5 left-5 right-5 flex items-center justify-between">
-        <Link
-          href="/settings"
-          className="text-base text-zinc-600 hover:text-zinc-300"
-          title="keys"
-        >
-          :
-        </Link>
+        <div className="flex items-center gap-6">
+          <Link
+            href="/settings"
+            className="text-base text-zinc-600 hover:text-zinc-300"
+            title="keys"
+          >
+            :
+          </Link>
+          <a
+            href="https://github.com/doubletap-dave/the-foundry"
+            target="_blank"
+            rel="noreferrer"
+            className="text-base text-zinc-600 hover:text-zinc-300"
+          >
+            github
+          </a>
+        </div>
         <button
           type="button"
           onClick={() => void openLog()}
@@ -671,4 +681,3 @@ function BuiltLog({
     </div>
   );
 }
-
