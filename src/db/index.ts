@@ -26,6 +26,19 @@ sqlite.exec(`
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS provider_keys (
+    id TEXT PRIMARY KEY,
+    provider TEXT NOT NULL UNIQUE,
+    key TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS model_configs (
+    id TEXT PRIMARY KEY,
+    role TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    model TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
 `);
 
 const sparkCols = sqlite.prepare('PRAGMA table_info(sparks)').all() as { name: string }[];
