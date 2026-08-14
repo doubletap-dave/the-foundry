@@ -17,9 +17,56 @@ import {
 } from "@/app/actions";
 import type { SparkView } from "@/lib/agent-schemas";
 import { browserHasKeys, readBrowserKeys } from "@/lib/browser-keys";
+import { readBrowserModel } from "@/lib/browser-model";
 import { Md } from "@/components/md";
 
 const STORE = "foundry.sparkId";
+
+function displayError(error: string): string {
+  return error
+    .replace(/\s*at\s*\/settings\.?/gi, ".")
+    .replace(/\/settings/gi, "")
+    .replace(/\s+\./g, ".")
+    .replace(/\.{2,}/g, ".")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function keyRelated(error: string): boolean {
+  return /key/i.test(error);
+}
+
+function isSettingsCommand(raw: string): boolean {
+  const t = raw.trim();
+  const lower = t.toLowerCase();
+  return (
+    lower === "keys" ||
+    t === ":" ||
+    t === "π" ||
+    lower === "pi" ||
+    lower === "settings" ||
+    lower === "/settings" ||
+    lower === "/keys"
+  );
+}
+
+function SettingsWord({ className }: { className?: string }) {
+  return (
+    <Link href="/settings" className={className ?? "text-zinc-500 hover:text-zinc-300"}>
+      settings
+    </Link>
+  );
+}
+
+function FakeCaret({ show }: { show: boolean }) {
+  if (!show) return null;
+  return (
+    <span
+      aria-hidden
+      className="foundry-caret pointer-events-none absolute left-0 top-[0.2em] h-[1.15em] w-0.5 bg-ember"
+    />
+  );
+}
 
 type Screen = "empty" | "looking" | "ready" | "packet" | "legs" | "log";
 
@@ -156,7 +203,7 @@ export function Console({ hasKey }: { hasKey: boolean }) {
       if (inFlight || cancelled || !spark) return;
       inFlight = true;
       try {
-        await advanceSpark(spark.id, readBrowserKeys());
+        await advanceSpark(spark.id, readBrowserKeys(), readBrowserModel());
         const row = await readSpark(spark.id);
         if (cancelled || !row) return;
         if (row.status !== "looking") applySpark(row);
@@ -202,7 +249,7 @@ export function Console({ hasKey }: { hasKey: boolean }) {
 
   async function send() {
     const trimmed = text.trim();
-    if (trimmed === "keys" || trimmed === ":" || trimmed === "π" || trimmed === "pi" || trimmed === "settings") {
+    if (isSettingsCommand(trimmed)) {
       router.push("/settings");
       return;
     }
@@ -214,11 +261,11 @@ export function Console({ hasKey }: { hasKey: boolean }) {
     if (pending) return;
     setError(null);
     if (!effectiveHasKey) {
-      setError("No keys. Add one at /settings.");
+      setError("No keys.");
       return;
     }
     setPending(true);
-    const result = await submitSpark(text, readBrowserKeys());
+    const result = await submitSpark(text, readBrowserKeys(), readBrowserModel());
     setPending(false);
     if ("error" in result) {
       setError(result.error);
@@ -250,7 +297,7 @@ export function Console({ hasKey }: { hasKey: boolean }) {
     setLookLine("Writing the packet.");
     setSpark({ ...spark, status: "looking", packet: null });
     setScreen("looking");
-    const result = await writePacket(spark.id, readBrowserKeys());
+    const result = await writePacket(spark.id, readBrowserKeys(), readBrowserModel());
     setPending(false);
     if ("error" in result) {
       setError(result.error);
@@ -263,7 +310,7 @@ export function Console({ hasKey }: { hasKey: boolean }) {
     if (!spark) return;
     setPending(true);
     setError(null);
-    const result = await mutateSpark(spark.id, readBrowserKeys());
+    const result = await mutateSpark(spark.id, readBrowserKeys(), readBrowserModel());
     setPending(false);
     if ("error" in result) {
       setError(result.error);
@@ -280,7 +327,7 @@ export function Console({ hasKey }: { hasKey: boolean }) {
     if (!trimmed) return;
     setPending(true);
     setError(null);
-    const result = await refineSpark(spark.id, trimmed, readBrowserKeys());
+    const result = await refineSpark(spark.id, trimmed, readBrowserKeys(), readBrowserModel());
     setPending(false);
     if ("error" in result) {
       setError(result.error);
@@ -437,43 +484,79 @@ function Empty({
   keysReady: boolean;
   areaRef: RefObject<HTMLTextAreaElement | null>;
 }) {
+  const [focused, setFocused] = useState(false);
+
+  useEffect(() => {
+    areaRef.current?.focus();
+  }, [areaRef]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (pending) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === "Escape" || e.key === "Tab") return;
+      const el = areaRef.current;
+      if (!el) return;
+      if (document.activeElement === el) return;
+      const target = e.target;
+      if (target instanceof HTMLElement) {
+        const tag = target.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable) {
+          return;
+        }
+      }
+      if (e.key.length === 1) {
+        e.preventDefault();
+        el.focus();
+        setText(text + e.key);
+      } else if (e.key === "Backspace") {
+        e.preventDefault();
+        el.focus();
+        setText(text.slice(0, -1));
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [areaRef, pending, setText, text]);
+
+  const shown = error ? displayError(error) : "";
+
   return (
     <div>
       <h1 className="mb-8 text-3xl font-medium tracking-tight text-zinc-100 md:text-4xl">
         What&apos;s rattling around in your head?
       </h1>
-      <textarea
-        ref={areaRef}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            onSend();
-          }
-        }}
-        rows={5}
-        spellCheck={false}
-        placeholder=""
-        className="w-full resize-none bg-transparent text-xl leading-relaxed text-zinc-200 outline-none placeholder:text-zinc-700 md:text-2xl"
-      />
+      <div className="relative">
+        <FakeCaret show={text.length === 0 && !focused} />
+        <textarea
+          ref={areaRef}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              onSend();
+            }
+          }}
+          rows={5}
+          spellCheck={false}
+          className="caret-ember w-full resize-none bg-transparent text-xl leading-relaxed text-zinc-200 outline-none md:text-2xl"
+        />
+      </div>
       <div className="mt-6 flex items-center justify-between gap-4">
         <p className="text-sm text-zinc-600">
           {error ? (
             <span className="text-zinc-400">
-              {error}{" "}
-              {/settings/i.test(error) ? (
-                <Link href="/settings" className="text-ember hover:text-ember-glow">
-                  /settings
-                </Link>
+              {shown}{" "}
+              {keyRelated(error) ? (
+                <SettingsWord className="text-ember hover:text-ember-glow" />
               ) : null}
             </span>
           ) : !hasKey && keysReady ? (
             <span>
-              No keys.{" "}
-              <Link href="/settings" className="text-zinc-500 hover:text-zinc-300">
-                /settings
-              </Link>
+              No keys. <SettingsWord />
             </span>
           ) : (
             <span className="opacity-0">.</span>
@@ -510,6 +593,7 @@ function Ready({
   onRefine: (note: string) => void;
 }) {
   const [note, setNote] = useState("");
+  const [focused, setFocused] = useState(false);
   const followRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -525,6 +609,13 @@ function Ready({
       const el = followRef.current;
       if (!el) return;
       if (document.activeElement === el) return;
+      const target = e.target;
+      if (target instanceof HTMLElement) {
+        const tag = target.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable) {
+          return;
+        }
+      }
       if (e.key.length === 1) {
         e.preventDefault();
         el.focus();
@@ -539,12 +630,21 @@ function Ready({
     return () => window.removeEventListener("keydown", onKey);
   }, [pending]);
 
+  const shown = error ? displayError(error) : "";
+
   return (
     <div>
       <Md className="text-xl leading-relaxed text-zinc-200 md:text-2xl md:leading-relaxed">
         {take}
       </Md>
-      {error ? <p className="mt-6 text-sm text-zinc-500">{error}</p> : null}
+      {error ? (
+        <p className="mt-6 text-sm text-zinc-500">
+          {shown}{" "}
+          {keyRelated(error) ? (
+            <SettingsWord className="text-ember hover:text-ember-glow" />
+          ) : null}
+        </p>
+      ) : null}
       <div className="mt-12 flex flex-wrap items-center gap-x-8 gap-y-3">
         <WordButton onClick={onBuild} disabled={pending}>
           Build it
@@ -556,26 +656,30 @@ function Ready({
           Nah
         </WordButton>
       </div>
-      <textarea
-        ref={followRef}
-        value={note}
-        autoFocus
-        onChange={(e) => setNote(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            const trimmed = note.trim();
-            if (!trimmed || pending) return;
-            onRefine(trimmed);
-            setNote("");
-          }
-        }}
-        rows={2}
-        spellCheck={false}
-        disabled={pending}
-        placeholder="say more"
-        className="mt-10 w-full resize-none bg-transparent text-lg leading-relaxed text-zinc-200 outline-none placeholder:text-zinc-600 disabled:opacity-40"
-      />
+      <div className="relative mt-10">
+        <FakeCaret show={note.length === 0 && !focused} />
+        <textarea
+          ref={followRef}
+          value={note}
+          autoFocus
+          onChange={(e) => setNote(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              const trimmed = note.trim();
+              if (!trimmed || pending) return;
+              onRefine(trimmed);
+              setNote("");
+            }
+          }}
+          rows={2}
+          spellCheck={false}
+          disabled={pending}
+          className="caret-ember w-full resize-none bg-transparent text-lg leading-relaxed text-zinc-200 outline-none disabled:opacity-40"
+        />
+      </div>
     </div>
   );
 }
