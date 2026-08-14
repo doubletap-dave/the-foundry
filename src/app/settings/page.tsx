@@ -46,10 +46,18 @@ export default async function SettingsPage() {
             keySet={keySet}
           />
         </section>
-        <p className="text-xs text-zinc-700">
+        <p className="flex items-center gap-6 text-xs text-zinc-700">
           <Link href="/" className="hover:text-zinc-400">
             esc
           </Link>
+          <a
+            href="https://github.com/doubletap-dave/the-foundry"
+            target="_blank"
+            rel="noreferrer"
+            className="hover:text-zinc-400"
+          >
+            github
+          </a>
         </p>
       </div>
     </div>
