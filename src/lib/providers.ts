@@ -339,7 +339,9 @@ export async function testProviderConnection(
 export function requireKey(provider: Provider): string {
   const key = readKey(provider);
   if (!key) {
-    throw new Error(`Add a ${providerLabel(provider)} key at /settings.`);
+    const label = providerLabel(provider);
+    const article = /^[aeiou]/i.test(label) ? "an" : "a";
+    throw new Error(`Add ${article} ${label} key.`);
   }
   return key;
 }
