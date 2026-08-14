@@ -16,6 +16,7 @@ import {
   writePacket,
 } from "@/app/actions";
 import type { SparkView } from "@/lib/agent-schemas";
+import { agentBrief } from "@/lib/packet-brief";
 import { browserHasKeys, readBrowserKeys } from "@/lib/browser-keys";
 import { readBrowserModel } from "@/lib/browser-model";
 import { Md } from "@/components/md";
@@ -472,6 +473,7 @@ export function Console({ hasKey }: { hasKey: boolean }) {
             <PacketView
               spark={spark.text}
               take={spark.take}
+              hours={spark.hours}
               packet={spark.packet}
               status={spark.status}
               legs={spark.legs}
@@ -753,6 +755,7 @@ function Ready({
 function PacketView({
   spark,
   take,
+  hours,
   packet,
   status,
   legs,
@@ -761,41 +764,57 @@ function PacketView({
 }: {
   spark?: string;
   take: string | null;
+  hours: string | null;
   packet: NonNullable<SparkView["packet"]>;
   status: string;
   legs: string | null;
   pending: boolean;
   onBuilt: () => void;
 }) {
+  const briefRef = useRef<HTMLPreElement>(null);
+  const [copied, setCopied] = useState(false);
+  const copiedTimer = useRef<number>(0);
   const done = status === "built" || status === "rated";
-  const blocks: { k: string; v: string }[] = [
-    { k: "build", v: packet.build },
-    { k: "don’t", v: packet.dont },
-    { k: "stack", v: packet.stack },
-    { k: "stop when", v: packet.stopWhen },
-  ];
-  if (packet.files?.trim()) {
-    blocks.push({ k: "exists when", v: packet.files });
+  const brief = agentBrief({ spark, take, hours, packet });
+
+  useEffect(() => {
+    return () => window.clearTimeout(copiedTimer.current);
+  }, []);
+
+  async function copyBrief() {
+    try {
+      await navigator.clipboard.writeText(brief);
+      setCopied(true);
+      window.clearTimeout(copiedTimer.current);
+      copiedTimer.current = window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      const node = briefRef.current;
+      if (!node) return;
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+    }
   }
+
   return (
     <div className="space-y-10">
       {spark ? (
         <FadeIn className="line-clamp-2 text-sm text-zinc-600">{spark}</FadeIn>
       ) : null}
-      {take ? (
-        <Md className="text-xl leading-relaxed text-zinc-200 md:text-2xl">{take}</Md>
-      ) : null}
-      {blocks.map((b) => (
-        <div key={b.k}>
-          <p className="mb-2 text-sm text-zinc-500">
-            {b.k}
-          </p>
-          <Md className="text-lg leading-relaxed text-zinc-200">{b.v}</Md>
-        </div>
-      ))}
-      <div className="pt-4">
+      <pre
+        ref={briefRef}
+        className="foundry-brief select-text whitespace-pre-wrap font-sans text-lg leading-relaxed text-zinc-200 md:text-xl"
+      >
+        {brief}
+      </pre>
+      <div className="flex flex-wrap items-center gap-x-8 gap-y-3 pt-4">
+        <WordButton onClick={() => void copyBrief()}>
+          {copied ? "Copied" : "Copy"}
+        </WordButton>
         {status === "building" ? (
-          <WordButton onClick={onBuilt} disabled={pending}>
+          <WordButton onClick={onBuilt} disabled={pending} dim>
             I built it
           </WordButton>
         ) : done ? (
