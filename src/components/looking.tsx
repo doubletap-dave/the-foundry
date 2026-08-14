@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import anime from "@/vendor/anime.js";
 import type { SparkPhase, SparkThought } from "@/lib/agent-schemas";
 
 export type { SparkPhase, SparkThought };
@@ -38,6 +39,39 @@ const NAMES: Record<"scout" | "contrarian" | "maker", string> = {
   maker: "Maker",
 };
 
+export function FadeIn({
+  children,
+  className,
+  duration = 500,
+}: {
+  children: ReactNode;
+  className?: string;
+  duration?: number;
+}) {
+  const el = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    const node = el.current;
+    if (!node) return;
+    anime.remove(node);
+    anime({
+      targets: node,
+      opacity: [0, 1],
+      duration,
+      easing: "easeOutCubic",
+    });
+    return () => {
+      anime.remove(node);
+    };
+  }, [duration]);
+
+  return (
+    <p ref={el} className={className} style={{ opacity: 0 }}>
+      {children}
+    </p>
+  );
+}
+
 function Sparkle() {
   return (
     <div className="foundry-sparkle shrink-0" aria-hidden>
@@ -52,50 +86,89 @@ function StatusLine({ phase }: { phase: SparkPhase }) {
   const phrases = STATUS[phase];
   const el = useRef<HTMLParagraphElement>(null);
   const indexRef = useRef(0);
-  const [index, setIndex] = useState(0);
+  const firstRef = useRef(true);
+  const aliveRef = useRef(true);
+  const [display, setDisplay] = useState(phrases[0]);
 
   useEffect(() => {
-    indexRef.current = 0;
-    setIndex(0);
-  }, [phase]);
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     const node = el.current;
     if (!node) return;
-    node.getAnimations().forEach((a) => a.cancel());
-    node.animate(
-      [
-        { opacity: 0, transform: "translateY(8px)" },
-        { opacity: 1, transform: "translateY(0px)" },
-      ],
-      { duration: 360, easing: "cubic-bezier(0.16, 1, 0.3, 1)", fill: "forwards" },
-    );
-  }, [index, phase]);
+    anime.remove(node);
+    anime({
+      targets: node,
+      opacity: [0, 1],
+      translateY: [10, 0],
+      duration: 420,
+      easing: "easeOutCubic",
+    });
+    return () => {
+      anime.remove(node);
+    };
+  }, [display]);
 
   useEffect(() => {
-    if (phrases.length < 2) return;
+    indexRef.current = 0;
+    const next = STATUS[phase][0];
+    const node = el.current;
+
+    if (firstRef.current) {
+      firstRef.current = false;
+      setDisplay(next);
+    } else if (node) {
+      anime.remove(node);
+      anime({
+        targets: node,
+        opacity: [1, 0],
+        translateY: [0, -8],
+        duration: 220,
+        easing: "easeInCubic",
+        complete: () => {
+          if (!aliveRef.current) return;
+          setDisplay(next);
+        },
+      });
+    } else {
+      setDisplay(next);
+    }
+
+    const list = STATUS[phase];
+    if (list.length < 2) return;
+
     const hold = window.setInterval(() => {
-      const node = el.current;
-      if (!node) return;
-      node.getAnimations().forEach((a) => a.cancel());
-      const out = node.animate(
-        [
-          { opacity: 1, transform: "translateY(0px)" },
-          { opacity: 0, transform: "translateY(-6px)" },
-        ],
-        { duration: 240, easing: "cubic-bezier(0.4, 0, 1, 1)", fill: "forwards" },
-      );
-      out.onfinish = () => {
-        indexRef.current = (indexRef.current + 1) % phrases.length;
-        setIndex(indexRef.current);
-      };
+      const target = el.current;
+      if (!target || !aliveRef.current) return;
+      anime.remove(target);
+      anime({
+        targets: target,
+        opacity: [1, 0],
+        translateY: [0, -8],
+        duration: 220,
+        easing: "easeInCubic",
+        complete: () => {
+          if (!aliveRef.current) return;
+          const cycle = STATUS[phase];
+          indexRef.current = (indexRef.current + 1) % cycle.length;
+          setDisplay(cycle[indexRef.current]);
+        },
+      });
     }, 2200);
-    return () => window.clearInterval(hold);
-  }, [phase, phrases.length]);
+
+    return () => {
+      window.clearInterval(hold);
+      if (el.current) anime.remove(el.current);
+    };
+  }, [phase]);
 
   return (
-    <p ref={el} className="text-lg text-zinc-300">
-      {phrases[index] ?? phrases[0]}
+    <p ref={el} className="text-lg text-zinc-300" style={{ opacity: 0 }}>
+      {display}
     </p>
   );
 }
@@ -108,16 +181,22 @@ function ThoughtCard({
   lines: string[];
 }) {
   const el = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const node = el.current;
     if (!node) return;
-    node.animate(
-      [
-        { opacity: 0, transform: "translateY(10px)" },
-        { opacity: 1, transform: "translateY(0px)" },
-      ],
-      { duration: 520, easing: "cubic-bezier(0.16, 1, 0.3, 1)", fill: "forwards" },
-    );
+    anime.remove(node);
+    anime({
+      targets: node,
+      opacity: [0, 1],
+      translateY: [16, 0],
+      duration: 560,
+      easing: "easeOutCubic",
+      delay: 40,
+    });
+    return () => {
+      anime.remove(node);
+    };
   }, []);
 
   return (
@@ -137,13 +216,18 @@ function ThoughtCard({
 export function Looking({
   phase,
   thoughts = [],
+  spark,
 }: {
   phase: SparkPhase;
   thoughts?: SparkThought[];
+  spark?: string;
 }) {
   const cards = thoughts.filter((t) => t.lines.length > 0);
   return (
     <div>
+      {spark ? (
+        <FadeIn className="mb-8 line-clamp-2 text-sm text-zinc-600">{spark}</FadeIn>
+      ) : null}
       <div className="flex items-center gap-5">
         <Sparkle />
         <StatusLine phase={phase} />
