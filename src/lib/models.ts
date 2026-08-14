@@ -82,7 +82,7 @@ export const AGENT_ROLES: { id: AgentRole; label: string; blurb: string }[] = [
   { id: "default", label: "Default", blurb: "Used unless an agent has its own override." },
   { id: "scout", label: "Scout", blurb: "What exists, what data, what is blocked." },
   { id: "contrarian", label: "Contrarian", blurb: "Why the obvious version is bad." },
-  { id: "maker", label: "Maker", blurb: "Turns the idea into three experiments." },
+  { id: "maker", label: "Planner", blurb: "Writes the smallest sitting worth touching." },
   { id: "judge", label: "Judge", blurb: "Scores and recommends one to build." },
 ];
 

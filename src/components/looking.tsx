@@ -6,7 +6,7 @@ import type { SparkPhase, SparkThought } from "@/lib/agent-schemas";
 
 export type { SparkPhase, SparkThought };
 
-type SeatId = "scout" | "contrarian" | "builder";
+type SeatId = "scout" | "contrarian" | "planner";
 type SeatState = "waiting" | "live" | "done";
 
 const LOOKING_AT: Record<SeatId, string[]> = {
@@ -21,7 +21,7 @@ const LOOKING_AT: Record<SeatId, string[]> = {
     "Why that version gets hated",
     "A constraint worth exploiting",
   ],
-  builder: [
+  planner: [
     "The smallest version worth touching",
     "What not to build this sitting",
   ],
@@ -33,15 +33,15 @@ const HANDOFF: Partial<Record<SeatId, { to: string; note: string }>> = {
     note: "Kill the obvious version. Find the constraint it's hiding.",
   },
   contrarian: {
-    to: "Builder",
-    note: "Make the smallest honest sitting of the weird route.",
+    to: "Planner",
+    note: "Write the smallest honest sitting of the weird route.",
   },
 };
 
 const NAMES: Record<SeatId, string> = {
   scout: "Scout",
   contrarian: "Contrarian",
-  builder: "Builder",
+  planner: "Planner",
 };
 
 function seatState(id: SeatId, phase: SparkPhase): SeatState {
@@ -54,12 +54,12 @@ function seatState(id: SeatId, phase: SparkPhase): SeatState {
     if (id === "contrarian") return "live";
     return "waiting";
   }
-  if (id === "builder") return "live";
+  if (id === "planner") return "live";
   return "done";
 }
 
 function foundFor(id: SeatId, thoughts: SparkThought[]): string[] {
-  const agent = id === "builder" ? "maker" : id;
+  const agent = id === "planner" ? "maker" : id;
   return thoughts.find((t) => t.agent === agent)?.lines ?? [];
 }
 
@@ -203,7 +203,7 @@ export function Looking({
   thoughts?: SparkThought[];
   spark?: string;
 }) {
-  const seats: SeatId[] = ["scout", "contrarian", "builder"];
+  const seats: SeatId[] = ["scout", "contrarian", "planner"];
   return (
     <div>
       {spark ? (
