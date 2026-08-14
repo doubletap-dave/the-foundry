@@ -2,6 +2,7 @@ import Link from "next/link";
 import { DefaultModel } from "@/components/default-model";
 import { KeysForm } from "@/components/keys-form";
 import { SettingsEsc } from "@/components/settings-esc";
+import { PlansExport } from "@/components/plans-export";
 import { type Provider } from "@/lib/models";
 import { fetchAllCatalogs, listKeyStatuses } from "@/lib/providers";
 import { listModelConfigs } from "@/lib/queries";
@@ -35,6 +36,7 @@ export default async function SettingsPage() {
           </p>
           <KeysForm initial={keys} />
         </section>
+        <PlansExport />
         <section className="space-y-8">
           <p className="text-base text-zinc-500">Model</p>
           <DefaultModel
