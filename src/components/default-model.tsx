@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { loadOneCatalog, saveModelConfigs } from "@/app/actions";
 import { readBrowserKeys } from "@/lib/browser-keys";
+import { readBrowserModel, writeBrowserModel } from "@/lib/browser-model";
 import {
   PROVIDER_IDS,
   PROVIDERS,
@@ -77,18 +78,33 @@ export function DefaultModel({
     function sync() {
       const next = keyedFromBrowser();
       setKeyed(next);
-      setProvider((current) => {
-        if (next.length === 0) return current;
-        if (next.length === 1) return next[0];
-        if (!next.includes(current)) return next[0];
-        return current;
-      });
+      const stored = readBrowserModel();
+      if (stored && (next.length === 0 || next.includes(stored.provider))) {
+        setProvider(stored.provider);
+        setModel(stored.model);
+        return;
+      }
+      if (next.length === 1) {
+        const only = next[0];
+        setProvider(only);
+        if (!stored) {
+          const mid = defaultModelFor(only);
+          setModel(mid);
+          writeBrowserModel({ provider: only, model: mid });
+        }
+        return;
+      }
+      if (next.length > 1) {
+        setProvider((current) => (next.includes(current) ? current : next[0]));
+      }
     }
     sync();
     window.addEventListener("foundry-keys", sync);
+    window.addEventListener("foundry-model", sync);
     window.addEventListener("storage", sync);
     return () => {
       window.removeEventListener("foundry-keys", sync);
+      window.removeEventListener("foundry-model", sync);
       window.removeEventListener("storage", sync);
     };
   }, []);
@@ -139,13 +155,16 @@ export function DefaultModel({
     if (p === provider) return;
     setProvider(p);
     const first = (catalogs[p] ?? [])[0];
-    setModel(first?.id ?? defaultModelFor(p));
+    const nextModel = first?.id ?? defaultModelFor(p);
+    setModel(nextModel);
     setErr(null);
+    writeBrowserModel({ provider: p, model: nextModel });
   }
 
   function pickModel(id: string) {
     setModel(id);
     setErr(null);
+    writeBrowserModel({ provider, model: id });
     start(async () => {
       const result = await saveModelConfigs({
         configs: [{ role: "default", provider, model: id }],

@@ -9,7 +9,7 @@ import { modelConfigs, sparks } from "@/db/schema";
 import { executePacket, executeSpark } from "@/lib/graph";
 import { id } from "@/lib/ids";
 import { bagHasKey, sanitizeKeys, type RequestKeys } from "@/lib/keys";
-import { runWithKeys } from "@/lib/keys-context";
+import { runWithKeys, type ModelChoice } from "@/lib/keys-context";
 import type { AgentRole, Provider } from "@/lib/models";
 import { PROVIDER_IDS } from "@/lib/models";
 import { who } from "@/lib/owner";
@@ -39,6 +39,16 @@ function parseKeys(raw: RequestKeys | undefined): RequestKeys {
   return sanitizeKeys(parsed.success ? parsed.data : {});
 }
 
+const choiceSchema = z.object({
+  provider: z.enum(PROVIDER_IDS),
+  model: z.string().trim().min(1),
+});
+
+function parseChoice(raw: ModelChoice | null | undefined): ModelChoice | undefined {
+  const parsed = choiceSchema.safeParse(raw);
+  return parsed.success ? parsed.data : undefined;
+}
+
 function canIgnite(keys: RequestKeys): boolean {
   return bagHasKey(keys) || hasAnyKey();
 }
@@ -46,15 +56,17 @@ function canIgnite(keys: RequestKeys): boolean {
 export async function submitSpark(
   raw: string,
   keys?: RequestKeys,
+  choice?: ModelChoice | null,
 ): Promise<{ sparkId: string } | { error: string }> {
   const owner = await who();
   const bag = parseKeys(keys);
+  const parsedChoice = parseChoice(choice);
   const parsed = ideaSchema.safeParse(raw);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid spark" };
   }
   if (!canIgnite(bag)) {
-    return { error: "No keys. Add one at /settings." };
+    return { error: "No keys." };
   }
 
   const now = new Date();
@@ -77,7 +89,7 @@ export async function submitSpark(
     .run();
 
   after(async () => {
-    await runWithKeys(bag, () => executeSpark(sparkId));
+    await runWithKeys(bag, () => executeSpark(sparkId), parsedChoice);
   });
 
   return { sparkId };
@@ -92,16 +104,20 @@ export async function readSpark(sparkId: string): Promise<SparkView | null> {
 export async function advanceSpark(
   sparkId: string,
   keys?: RequestKeys,
+  choice?: ModelChoice | null,
 ): Promise<{ ok: true } | { error: string }> {
   const owner = await who();
   const bag = parseKeys(keys);
+  const parsedChoice = parseChoice(choice);
   const row = getSpark(sparkId, owner);
   if (!row) return { error: "Spark not found" };
   if (row.status !== "looking" && row.status !== "error") return { ok: true };
   try {
     const research = parseResearch(row.research);
-    await runWithKeys(bag, () =>
-      research.packetPending ? executePacket(sparkId) : executeSpark(sparkId, false),
+    await runWithKeys(
+      bag,
+      () => (research.packetPending ? executePacket(sparkId) : executeSpark(sparkId, false)),
+      parsedChoice,
     );
     return { ok: true };
   } catch (err) {
@@ -112,12 +128,14 @@ export async function advanceSpark(
 export async function mutateSpark(
   sparkId: string,
   keys?: RequestKeys,
+  choice?: ModelChoice | null,
 ): Promise<{ ok: true } | { error: string }> {
   const owner = await who();
   const bag = parseKeys(keys);
+  const parsedChoice = parseChoice(choice);
   const row = getSpark(sparkId, owner);
   if (!row) return { error: "Spark not found" };
-  if (!canIgnite(bag)) return { error: "No keys. Add one at /settings." };
+  if (!canIgnite(bag)) return { error: "No keys." };
 
   const research = parseResearch(row.research);
   db.update(sparks)
@@ -139,7 +157,7 @@ export async function mutateSpark(
     .run();
 
   after(async () => {
-    await runWithKeys(bag, () => executeSpark(sparkId, true));
+    await runWithKeys(bag, () => executeSpark(sparkId, true), parsedChoice);
   });
 
   return { ok: true };
@@ -161,12 +179,14 @@ export async function killSpark(
 export async function writePacket(
   sparkId: string,
   keys?: RequestKeys,
+  choice?: ModelChoice | null,
 ): Promise<{ ok: true } | { error: string }> {
   const owner = await who();
   const bag = parseKeys(keys);
+  const parsedChoice = parseChoice(choice);
   const row = getSpark(sparkId, owner);
   if (!row) return { error: "Spark not found" };
-  if (!canIgnite(bag)) return { error: "No keys. Add one at /settings." };
+  if (!canIgnite(bag)) return { error: "No keys." };
   if (!row.take) return { error: "No take yet." };
 
   const research = parseResearch(row.research);
@@ -189,7 +209,7 @@ export async function writePacket(
     .run();
 
   after(async () => {
-    await runWithKeys(bag, () => executePacket(sparkId));
+    await runWithKeys(bag, () => executePacket(sparkId), parsedChoice);
   });
 
   return { ok: true };
@@ -199,12 +219,14 @@ export async function refineSpark(
   sparkId: string,
   note: string,
   keys?: RequestKeys,
+  choice?: ModelChoice | null,
 ): Promise<{ ok: true } | { error: string }> {
   const owner = await who();
   const bag = parseKeys(keys);
+  const parsedChoice = parseChoice(choice);
   const row = getSpark(sparkId, owner);
   if (!row) return { error: "Spark not found" };
-  if (!canIgnite(bag)) return { error: "No keys. Add one at /settings." };
+  if (!canIgnite(bag)) return { error: "No keys." };
   const trimmed = note.trim();
   if (!trimmed) return { error: "Say more." };
 
@@ -228,7 +250,7 @@ export async function refineSpark(
     .run();
 
   after(async () => {
-    await runWithKeys(bag, () => executeSpark(sparkId, false));
+    await runWithKeys(bag, () => executeSpark(sparkId, false), parsedChoice);
   });
 
   return { ok: true };
@@ -282,31 +304,35 @@ export async function saveModelConfigs(
   if (!parsed.success) return { error: "Invalid model config" };
 
   const now = new Date();
+  const rolesFor = (role: AgentRole): AgentRole[] =>
+    role === "default" ? ["default", "scout", "contrarian", "maker", "judge"] : [role];
   for (const row of parsed.data.configs) {
-    const existing = db
-      .select()
-      .from(modelConfigs)
-      .where(eq(modelConfigs.role, row.role))
-      .get();
-    if (existing) {
-      db.update(modelConfigs)
-        .set({
-          provider: row.provider,
-          model: row.model,
-          updatedAt: now,
-        })
-        .where(eq(modelConfigs.id, existing.id))
-        .run();
-    } else {
-      db.insert(modelConfigs)
-        .values({
-          id: id("model"),
-          role: row.role as AgentRole,
-          provider: row.provider as Provider,
-          model: row.model,
-          updatedAt: now,
-        })
-        .run();
+    for (const role of rolesFor(row.role as AgentRole)) {
+      const existing = db
+        .select()
+        .from(modelConfigs)
+        .where(eq(modelConfigs.role, role))
+        .get();
+      if (existing) {
+        db.update(modelConfigs)
+          .set({
+            provider: row.provider,
+            model: row.model,
+            updatedAt: now,
+          })
+          .where(eq(modelConfigs.id, existing.id))
+          .run();
+      } else {
+        db.insert(modelConfigs)
+          .values({
+            id: id("model"),
+            role,
+            provider: row.provider as Provider,
+            model: row.model,
+            updatedAt: now,
+          })
+          .run();
+      }
     }
   }
   revalidatePath("/settings");
