@@ -215,7 +215,7 @@ export async function executeSpark(sparkId: string, mutate = false): Promise<voi
     if (!hasRequestKeys() && !hasAnyKey()) {
       patchSpark(sparkId, {
         status: "error",
-        error: "No keys. Add one at /settings.",
+        error: "No keys.",
       });
       return;
     }
@@ -259,7 +259,7 @@ export async function executePacket(sparkId: string): Promise<void> {
     if (!hasRequestKeys() && !hasAnyKey()) {
       patchSpark(sparkId, {
         status: "error",
-        error: "No keys. Add one at /settings.",
+        error: "No keys.",
       });
       return;
     }
