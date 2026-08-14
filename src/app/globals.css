@@ -34,3 +34,18 @@ input {
 textarea {
   caret-color: #c26a3a;
 }
+
+@keyframes foundry-caret {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+.foundry-caret {
+  animation: foundry-caret 1s step-end infinite;
+}
+

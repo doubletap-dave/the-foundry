@@ -1,5 +1,13 @@
 import { ChatOpenAI } from "@langchain/openai";
 import { z } from "zod";
+import { requestedChoice } from "@/lib/keys-context";
+import {
+  defaultModelFor,
+  PROVIDER_IDS,
+  providerLabel,
+  type AgentRole,
+  type Provider,
+} from "@/lib/models";
 import { listModelConfigs } from "@/lib/queries";
 import {
   PROVIDER_META,
@@ -7,24 +15,68 @@ import {
   requireKey,
   sanitizeError,
 } from "@/lib/providers";
-import { providerLabel, type AgentRole, type Provider } from "@/lib/models";
 
 export type ResolvedModel = {
   provider: Provider;
   model: string;
 };
 
+function keyedProviders(): Provider[] {
+  return PROVIDER_IDS.filter((id) => Boolean(readKey(id)));
+}
+
+function usable(row: { provider: string; model: string } | undefined): ResolvedModel | null {
+  if (!row) return null;
+  if (!(PROVIDER_IDS as readonly string[]).includes(row.provider)) return null;
+  const provider = row.provider as Provider;
+  if (!readKey(provider)) return null;
+  const model = row.model?.trim();
+  if (!model) return null;
+  return { provider, model };
+}
+
 export function resolveRole(role: AgentRole): ResolvedModel {
+  const choice = requestedChoice();
+  const keyed = keyedProviders();
+
+  // Web-grounded scout: Perplexity whenever that key exists.
+  if (role === "scout" && readKey("perplexity")) {
+    if (choice?.provider === "perplexity") {
+      return { provider: "perplexity", model: choice.model };
+    }
+    return { provider: "perplexity", model: defaultModelFor("perplexity") };
+  }
+
+  // 1. Choice rides with the request (like keys), if that provider is keyed.
+  if (choice && readKey(choice.provider)) {
+    return { provider: choice.provider, model: choice.model };
+  }
+
+  // 2. sqlite default row if its provider has a key. Seed per-role OpenAI
+  //    rows are not real overrides — ignore them unless that key exists.
   const configs = listModelConfigs();
-  const def = configs.find((c) => c.role === "default");
-  const fallback: ResolvedModel = {
-    provider: (def?.provider as Provider) ?? "openai",
-    model: def?.model ?? "gpt-4.1-mini",
-  };
-  if (role === "default") return fallback;
-  const row = configs.find((c) => c.role === role);
-  if (!row) return fallback;
-  return { provider: row.provider, model: row.model };
+  const def = usable(configs.find((c) => c.role === "default"));
+  if (def) return def;
+  const row = usable(configs.find((c) => c.role === role));
+  if (row) return row;
+
+  // 3. Infer from keys on this request.
+  if (keyed.length === 1) {
+    return { provider: keyed[0], model: defaultModelFor(keyed[0]) };
+  }
+  if (keyed.length > 1) {
+    if (choice && keyed.includes(choice.provider)) {
+      return {
+        provider: choice.provider,
+        model: choice.model || defaultModelFor(choice.provider),
+      };
+    }
+    const live = keyed.find((id) => id !== "openai") ?? keyed[0];
+    return { provider: live, model: defaultModelFor(live) };
+  }
+
+  // 4. Never return openai when there is no OpenAI key.
+  throw new Error("No keys.");
 }
 
 export function makeChat(
