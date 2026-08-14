@@ -18,6 +18,40 @@ function keyedFromBrowser(): Provider[] {
   return PROVIDER_IDS.filter((id) => Boolean(bag[id]));
 }
 
+function parentIdOf(id: string, ids: string[]): string | null {
+  let best: string | null = null;
+  for (const other of ids) {
+    if (other === id) continue;
+    if (id.startsWith(`${other}-`) || id.startsWith(`${other}/`)) {
+      if (!best || other.length > best.length) best = other;
+    }
+  }
+  return best;
+}
+
+function nestModels(list: CatalogEntry[]): { entry: CatalogEntry; child: boolean }[] {
+  const ids = list.map((m) => m.id);
+  const kids = new Map<string, CatalogEntry[]>();
+  const roots: CatalogEntry[] = [];
+  for (const m of list) {
+    const parent = parentIdOf(m.id, ids);
+    if (parent) {
+      const arr = kids.get(parent) ?? [];
+      arr.push(m);
+      kids.set(parent, arr);
+    } else {
+      roots.push(m);
+    }
+  }
+  const out: { entry: CatalogEntry; child: boolean }[] = [];
+  function emit(m: CatalogEntry, child: boolean) {
+    out.push({ entry: m, child });
+    for (const k of kids.get(m.id) ?? []) emit(k, true);
+  }
+  for (const m of roots) emit(m, false);
+  return out;
+}
+
 export function DefaultModel({
   initial,
   catalogs: initialCatalogs,
@@ -34,9 +68,9 @@ export function DefaultModel({
     PROVIDER_IDS.filter((id) => keySet[id]),
   );
   const [looking, setLooking] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [filter, setFilter] = useState("");
   const [err, setErr] = useState<string | null>(null);
-  const [, start] = useTransition();
+  const [saving, start] = useTransition();
   const fetchFor = useRef<Provider | null>(null);
 
   useEffect(() => {
@@ -58,6 +92,10 @@ export function DefaultModel({
       window.removeEventListener("storage", sync);
     };
   }, []);
+
+  useEffect(() => {
+    setFilter("");
+  }, [provider]);
 
   useEffect(() => {
     if (!keyed.includes(provider)) {
@@ -102,13 +140,11 @@ export function DefaultModel({
     setProvider(p);
     const first = (catalogs[p] ?? [])[0];
     setModel(first?.id ?? defaultModelFor(p));
-    setSaved(false);
     setErr(null);
   }
 
   function pickModel(id: string) {
     setModel(id);
-    setSaved(false);
     setErr(null);
     start(async () => {
       const result = await saveModelConfigs({
@@ -116,13 +152,18 @@ export function DefaultModel({
       });
       if ("error" in result) {
         setErr(result.error);
-        return;
       }
-      setSaved(true);
     });
   }
 
   const list = catalogs[provider] ?? [];
+  const q = filter.trim().toLowerCase();
+  const filtered = q
+    ? list.filter(
+        (m) => m.id.toLowerCase().includes(q) || m.label.toLowerCase().includes(q),
+      )
+    : list;
+  const nested = nestModels(filtered);
 
   if (keyed.length === 0) {
     return <p className="text-sm text-zinc-600">Add a key first.</p>;
@@ -152,27 +193,44 @@ export function DefaultModel({
 
       {looking ? <p className="text-sm text-zinc-600">looking up models.</p> : null}
 
-      {list.length > 0 ? (
-        <ul className="max-h-72 overflow-auto">
-          {list.map((m) => (
-            <li key={m.id}>
-              <button
-                type="button"
-                onClick={() => pickModel(m.id)}
-                className={cn(
-                  "w-full py-1.5 text-left text-sm hover:text-ember",
-                  m.id === model ? "text-ember" : "text-zinc-400",
-                )}
-              >
-                {m.label}
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      {err ? (
+        <p className="text-sm text-zinc-500">{err}</p>
+      ) : (
+        <p className="text-sm text-zinc-500">
+          {saving ? `Saving ${model}…` : `Using ${model}.`}
+        </p>
+      )}
 
-      {saved ? <p className="text-sm text-zinc-600">ok</p> : null}
-      {err ? <p className="text-sm text-zinc-500">{err}</p> : null}
+      {list.length > 0 ? (
+        <>
+          <input
+            type="text"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="filter"
+            autoComplete="off"
+            spellCheck={false}
+            className="w-full max-w-md border-b border-zinc-800 bg-transparent py-2 font-mono text-sm text-zinc-200 outline-none placeholder:text-zinc-700 focus:border-zinc-500"
+          />
+          <ul className="max-h-72 overflow-auto">
+            {nested.map(({ entry: m, child }) => (
+              <li key={m.id}>
+                <button
+                  type="button"
+                  onClick={() => pickModel(m.id)}
+                  className={cn(
+                    "w-full py-1.5 text-left text-sm hover:text-ember",
+                    child && "pl-4",
+                    m.id === model ? "text-ember" : "text-zinc-400",
+                  )}
+                >
+                  {m.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
     </div>
   );
 }

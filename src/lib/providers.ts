@@ -72,8 +72,12 @@ export function readKey(provider: Provider): string | null {
 
 /** SQLite only — server fallback. Client checks localStorage itself. */
 export function hasAnyKey(): boolean {
-  const rows = db.select({ provider: providerKeys.provider }).from(providerKeys).all();
-  return rows.length > 0;
+  try {
+    const rows = db.select({ provider: providerKeys.provider }).from(providerKeys).all();
+    return rows.length > 0;
+  } catch {
+    return false;
+  }
 }
 
 export function listKeyStatuses(): KeyStatus[] {
@@ -262,20 +266,25 @@ export async function fetchCatalog(
       } else if (provider === "grok") {
         const sorted = sortGrok(rows.map((r) => r.id));
         rows = sorted.map((mid) => rows.find((r) => r.id === mid)!);
-      } else if (provider === "perplexity") {
-        const sorted = sortPerplexity(rows.map((r) => r.id));
-        rows = sorted.map((mid) => rows.find((r) => r.id === mid)!);
       }
-      const models: CatalogEntry[] = rows.map((r) => ({
+      let models: CatalogEntry[] = rows.map((r) => ({
         provider,
         id: r.id,
         label: r.label.includes("/") ? r.label.split("/").slice(-1)[0] : r.label,
         note: "live",
       }));
-      if (models.length === 0 && provider === "perplexity") {
-        const fallback = PERPLEXITY_FALLBACK;
-        catalogCache.set(provider, { at: Date.now(), models: fallback });
-        return fallback;
+      if (provider === "perplexity") {
+        const byId = new Map(models.map((m) => [m.id, m]));
+        for (const fb of PERPLEXITY_FALLBACK) {
+          if (!byId.has(fb.id)) byId.set(fb.id, fb);
+        }
+        const sorted = sortPerplexity([...byId.keys()]);
+        models = sorted.map((mid) => byId.get(mid)!);
+        if (models.length === 0) {
+          const fallback = PERPLEXITY_FALLBACK;
+          catalogCache.set(provider, { at: Date.now(), models: fallback });
+          return fallback;
+        }
       }
       catalogCache.set(provider, { at: Date.now(), models });
       return models;

@@ -23,6 +23,7 @@ export type CatalogEntry = {
   note: string;
 };
 
+/** Selectable Perplexity models. Live /models often only lists sonar. Do not include deprecated sonar-reasoning. */
 export const PERPLEXITY_FALLBACK: CatalogEntry[] = [
   { provider: "perplexity", id: "sonar", label: "sonar", note: "search" },
   { provider: "perplexity", id: "sonar-pro", label: "sonar-pro", note: "recommended" },
