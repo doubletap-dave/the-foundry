@@ -91,7 +91,7 @@ export function DefaultModel({
             type="button"
             onClick={() => pickProvider(p.id)}
             className={cn(
-              "font-mono text-xs uppercase tracking-[0.14em]",
+              "font-mono text-xs",
               provider === p.id ? "text-ember" : "text-zinc-600 hover:text-zinc-300",
             )}
           >
@@ -160,7 +160,7 @@ export function DefaultModel({
           type="button"
           onClick={onSave}
           disabled={pending}
-          className="font-mono text-xs uppercase tracking-[0.16em] text-zinc-400 hover:text-zinc-100 disabled:opacity-40"
+          className="font-mono text-xs text-zinc-400 hover:text-zinc-100 disabled:opacity-40"
         >
           {pending ? "saving" : "save"}
         </button>

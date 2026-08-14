@@ -23,20 +23,20 @@ export default async function SettingsPage() {
       <SettingsEsc />
       <Link
         href="/"
-        className="absolute left-5 top-5 font-mono text-[10px] uppercase tracking-[0.28em] text-zinc-700 hover:text-zinc-400"
+        className="absolute left-6 top-6 text-3xl font-medium tracking-tight text-zinc-500 hover:text-zinc-200 md:text-4xl lg:text-5xl"
       >
-        foundry
+        Foundry
       </Link>
       <div className="mx-auto w-full max-w-lg space-y-16">
         <section className="space-y-8">
-          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-zinc-600">keys</p>
+          <p className="text-sm text-zinc-500">Keys</p>
           <p className="font-mono text-xs text-zinc-600">
             Keys stay in this browser. Never on the server.
           </p>
           <KeysForm initial={keys} />
         </section>
         <section className="space-y-8">
-          <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-zinc-600">model</p>
+          <p className="text-sm text-zinc-500">Model</p>
           <DefaultModel
             initial={{
               provider: (def?.provider ?? "openai") as Provider,
