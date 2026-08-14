@@ -20,7 +20,7 @@ import { browserHasKeys, readBrowserKeys } from "@/lib/browser-keys";
 import { readBrowserModel } from "@/lib/browser-model";
 import { Md } from "@/components/md";
 import { pickSaying } from "@/lib/sayings";
-import { Looking } from "@/components/looking";
+import { FadeIn, Looking } from "@/components/looking";
 
 const STORE = "foundry.sparkId";
 
@@ -394,11 +394,13 @@ export function Console({ hasKey }: { hasKey: boolean }) {
             <Looking
               phase={phaseHint === "packet" ? "packet" : spark?.phase ?? "scout"}
               thoughts={spark?.thoughts}
+              spark={spark?.text}
             />
           ) : null}
 
           {screen === "ready" && spark?.take ? (
             <Ready
+              spark={spark.text}
               take={spark.take}
               pending={pending}
               error={error}
@@ -411,6 +413,7 @@ export function Console({ hasKey }: { hasKey: boolean }) {
 
           {screen === "packet" && spark?.packet ? (
             <PacketView
+              spark={spark.text}
               take={spark.take}
               packet={spark.packet}
               status={spark.status}
@@ -594,6 +597,7 @@ function Empty({
 }
 
 function Ready({
+  spark,
   take,
   pending,
   error,
@@ -602,6 +606,7 @@ function Ready({
   onNah,
   onRefine,
 }: {
+  spark: string;
   take: string;
   pending: boolean;
   error: string | null;
@@ -652,6 +657,9 @@ function Ready({
 
   return (
     <div>
+      {spark ? (
+        <FadeIn className="mb-8 line-clamp-2 text-sm text-zinc-600">{spark}</FadeIn>
+      ) : null}
       <Md className="text-xl leading-relaxed text-zinc-200 md:text-2xl md:leading-relaxed">
         {take}
       </Md>
@@ -703,6 +711,7 @@ function Ready({
 }
 
 function PacketView({
+  spark,
   take,
   packet,
   status,
@@ -710,6 +719,7 @@ function PacketView({
   pending,
   onBuilt,
 }: {
+  spark?: string;
   take: string | null;
   packet: NonNullable<SparkView["packet"]>;
   status: string;
@@ -729,6 +739,9 @@ function PacketView({
   }
   return (
     <div className="space-y-10">
+      {spark ? (
+        <FadeIn className="line-clamp-2 text-sm text-zinc-600">{spark}</FadeIn>
+      ) : null}
       {take ? (
         <Md className="text-xl leading-relaxed text-zinc-200 md:text-2xl">{take}</Md>
       ) : null}
