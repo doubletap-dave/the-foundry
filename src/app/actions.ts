@@ -21,7 +21,7 @@ import {
   sanitizeError,
   testProviderConnection,
 } from "@/lib/providers";
-import { encodeResearch, getSpark, listBuiltSparks, parseResearch, toSparkView, type SparkView } from "@/lib/queries";
+import { claimSpark, encodeResearch, getSpark, listBuiltSparks, parseResearch, toSparkView, type SparkSnapshot, type SparkView } from "@/lib/queries";
 
 const ideaSchema = z.string().trim().min(8, "Give it a real sentence.").max(2000);
 
@@ -46,6 +46,17 @@ const choiceSchema = z.object({
 
 function parseChoice(raw: ModelChoice | null | undefined): ModelChoice | undefined {
   const parsed = choiceSchema.safeParse(raw);
+  return parsed.success ? parsed.data : undefined;
+}
+
+const snapshotSchema = z.object({
+  text: z.string().trim().min(1),
+  take: z.string().nullable().optional(),
+  hours: z.string().nullable().optional(),
+});
+
+function parseSnapshot(raw: SparkSnapshot | undefined): SparkSnapshot | undefined {
+  const parsed = snapshotSchema.safeParse(raw);
   return parsed.success ? parsed.data : undefined;
 }
 
@@ -129,11 +140,12 @@ export async function mutateSpark(
   sparkId: string,
   keys?: RequestKeys,
   choice?: ModelChoice | null,
+  snapshot?: SparkSnapshot,
 ): Promise<{ ok: true } | { error: string }> {
   const owner = await who();
   const bag = parseKeys(keys);
   const parsedChoice = parseChoice(choice);
-  const row = getSpark(sparkId, owner);
+  const row = claimSpark(sparkId, owner, parseSnapshot(snapshot));
   if (!row) return { error: "Spark not found" };
   if (!canIgnite(bag)) return { error: "No keys." };
 
@@ -180,11 +192,12 @@ export async function writePacket(
   sparkId: string,
   keys?: RequestKeys,
   choice?: ModelChoice | null,
+  snapshot?: SparkSnapshot,
 ): Promise<{ ok: true } | { error: string }> {
   const owner = await who();
   const bag = parseKeys(keys);
   const parsedChoice = parseChoice(choice);
-  const row = getSpark(sparkId, owner);
+  const row = claimSpark(sparkId, owner, parseSnapshot(snapshot));
   if (!row) return { error: "Spark not found" };
   if (!canIgnite(bag)) return { error: "No keys." };
   if (!row.take) return { error: "No take yet." };
@@ -220,11 +233,12 @@ export async function refineSpark(
   note: string,
   keys?: RequestKeys,
   choice?: ModelChoice | null,
+  snapshot?: SparkSnapshot,
 ): Promise<{ ok: true } | { error: string }> {
   const owner = await who();
   const bag = parseKeys(keys);
   const parsedChoice = parseChoice(choice);
-  const row = getSpark(sparkId, owner);
+  const row = claimSpark(sparkId, owner, parseSnapshot(snapshot));
   if (!row) return { error: "Spark not found" };
   if (!canIgnite(bag)) return { error: "No keys." };
   const trimmed = note.trim();

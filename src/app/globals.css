@@ -125,3 +125,62 @@ textarea {
 .foundry-thought {
   animation: foundry-thought-in 0.45s ease-out both;
 }
+
+
+a, button {
+  transition: color 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.foundry-pi-glint {
+  pointer-events: none;
+  position: absolute;
+  inset: -5px;
+}
+
+.foundry-pi-glint i {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: #c26a3a;
+  opacity: 0;
+}
+
+.foundry-pi-glint i:nth-child(1) {
+  top: 2px;
+  left: 3px;
+}
+.foundry-pi-glint i:nth-child(2) {
+  top: 3px;
+  right: 2px;
+}
+.foundry-pi-glint i:nth-child(3) {
+  bottom: 3px;
+  left: 2px;
+}
+.foundry-pi-glint i:nth-child(4) {
+  bottom: 2px;
+  right: 4px;
+}
+
+.foundry-pi:hover .foundry-pi-glint i {
+  animation: foundry-pi-glint 2.2s ease-in-out infinite;
+}
+.foundry-pi:hover .foundry-pi-glint i:nth-child(2) {
+  animation-delay: 0.45s;
+}
+.foundry-pi:hover .foundry-pi-glint i:nth-child(3) {
+  animation-delay: 0.9s;
+}
+.foundry-pi:hover .foundry-pi-glint i:nth-child(4) {
+  animation-delay: 1.3s;
+}
+
+@keyframes foundry-pi-glint {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  35% {
+    opacity: 0.55;
+  }
+}

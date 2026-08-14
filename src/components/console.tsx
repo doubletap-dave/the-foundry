@@ -21,6 +21,7 @@ import { readBrowserModel } from "@/lib/browser-model";
 import { Md } from "@/components/md";
 import { pickSaying } from "@/lib/sayings";
 import { FadeIn, Looking } from "@/components/looking";
+import { ink } from "@/lib/motion";
 
 const STORE = "foundry.sparkId";
 
@@ -53,9 +54,102 @@ function isSettingsCommand(raw: string): boolean {
 }
 
 function SettingsWord({ className }: { className?: string }) {
+  const ref = useRef<HTMLAnchorElement>(null);
+  const rest = "#a1a1aa";
+  const lit = "#e4e4e7";
   return (
-    <Link href="/settings" className={className ?? "text-zinc-500 hover:text-zinc-300"}>
+    <Link
+      href="/settings"
+      ref={ref}
+      className={className ?? "text-zinc-400"}
+      style={{ color: rest }}
+      onMouseEnter={() => ink(ref.current, lit)}
+      onMouseLeave={() => ink(ref.current, rest)}
+    >
       settings
+    </Link>
+  );
+}
+
+function InkLink({
+  href,
+  rest,
+  lit,
+  className,
+  children,
+  title,
+  external,
+}: {
+  href: string;
+  rest: string;
+  lit: string;
+  className?: string;
+  children: ReactNode;
+  title?: string;
+  external?: boolean;
+}) {
+  const ref = useRef<HTMLAnchorElement>(null);
+  const cls = className ?? "text-lg";
+  const handlers = {
+    style: { color: rest },
+    onMouseEnter: () => ink(ref.current, lit),
+    onMouseLeave: () => ink(ref.current, rest),
+  };
+  if (external) {
+    return (
+      <a ref={ref} href={href} target="_blank" rel="noreferrer" title={title} className={cls} {...handlers}>
+        {children}
+      </a>
+    );
+  }
+  return (
+    <Link ref={ref} href={href} title={title} className={cls} {...handlers}>
+      {children}
+    </Link>
+  );
+}
+
+
+function BuiltMark({ onClick }: { onClick: () => void }) {
+  const ref = useRef<HTMLButtonElement>(null);
+  const rest = "#52525b";
+  const lit = "#d4d4d8";
+  return (
+    <button
+      ref={ref}
+      type="button"
+      onClick={onClick}
+      className="text-lg"
+      style={{ color: rest }}
+      onMouseEnter={() => ink(ref.current, lit)}
+      onMouseLeave={() => ink(ref.current, rest)}
+    >
+      built
+    </button>
+  );
+}
+
+function PiMark() {
+  const ref = useRef<HTMLAnchorElement>(null);
+  const rest = "#52525b";
+  const lit = "#d4d4d8";
+  return (
+    <Link
+      ref={ref}
+      href="/settings"
+      title="keys"
+      className="foundry-pi relative inline-flex h-7 w-7 items-center justify-center text-lg"
+      style={{ color: rest }}
+      onMouseEnter={() => ink(ref.current, lit)}
+      onMouseLeave={() => ink(ref.current, rest)}
+    >
+      π
+      <span className="foundry-pi-glint" aria-hidden>
+        <i />
+        <i />
+        <i />
+        <i />
+      </span>
     </Link>
   );
 }
@@ -98,18 +192,47 @@ function WordButton({
   disabled?: boolean;
   dim?: boolean;
 }) {
+  const ref = useRef<HTMLButtonElement>(null);
+  const rest = dim ? "#71717a" : "#d4d4d8";
+  const lit = dim ? "#e4e4e7" : "#e08a55";
   return (
     <button
+      ref={ref}
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={
-        dim
-          ? "text-lg text-zinc-500 hover:text-zinc-200 disabled:opacity-40 md:text-xl"
-          : "text-lg text-zinc-300 hover:text-ember-glow disabled:opacity-40 md:text-xl"
-      }
+      className="text-lg disabled:opacity-40 md:text-xl"
+      style={{ color: rest }}
+      onMouseEnter={() => {
+        if (!disabled) ink(ref.current, lit);
+      }}
+      onMouseLeave={() => ink(ref.current, rest)}
     >
       {children}
+    </button>
+  );
+}
+
+function snapOf(spark: SparkView) {
+  return { text: spark.text, take: spark.take, hours: spark.hours };
+}
+
+
+function HomeMark({ onClick }: { onClick: () => void }) {
+  const ref = useRef<HTMLButtonElement>(null);
+  const rest = "#71717a";
+  const lit = "#e4e4e7";
+  return (
+    <button
+      ref={ref}
+      type="button"
+      onClick={onClick}
+      className="absolute left-6 top-6 text-2xl font-medium tracking-tight md:text-3xl lg:text-4xl"
+      style={{ color: rest }}
+      onMouseEnter={() => ink(ref.current, lit)}
+      onMouseLeave={() => ink(ref.current, rest)}
+    >
+      The Foundry
     </button>
   );
 }
@@ -291,7 +414,7 @@ export function Console({ hasKey }: { hasKey: boolean }) {
     setPhaseHint("packet");
     setSpark({ ...spark, status: "looking", packet: null, phase: "packet" });
     setScreen("looking");
-    const result = await writePacket(spark.id, readBrowserKeys(), readBrowserModel());
+    const result = await writePacket(spark.id, readBrowserKeys(), readBrowserModel(), snapOf(spark));
     setPending(false);
     if ("error" in result) {
       setError(result.error);
@@ -305,7 +428,7 @@ export function Console({ hasKey }: { hasKey: boolean }) {
     if (!spark) return;
     setPending(true);
     setError(null);
-    const result = await mutateSpark(spark.id, readBrowserKeys(), readBrowserModel());
+    const result = await mutateSpark(spark.id, readBrowserKeys(), readBrowserModel(), snapOf(spark));
     setPending(false);
     if ("error" in result) {
       setError(result.error);
@@ -322,7 +445,7 @@ export function Console({ hasKey }: { hasKey: boolean }) {
     if (!trimmed) return;
     setPending(true);
     setError(null);
-    const result = await refineSpark(spark.id, trimmed, readBrowserKeys(), readBrowserModel());
+    const result = await refineSpark(spark.id, trimmed, readBrowserKeys(), readBrowserModel(), snapOf(spark));
     setPending(false);
     if ("error" in result) {
       setError(result.error);
@@ -367,13 +490,7 @@ export function Console({ hasKey }: { hasKey: boolean }) {
 
   return (
     <div className="relative flex min-h-screen flex-col">
-      <button
-        type="button"
-        onClick={goEmpty}
-        className="absolute left-6 top-6 text-2xl font-medium tracking-tight text-zinc-500 hover:text-zinc-200 md:text-3xl lg:text-4xl"
-      >
-        The Foundry
-      </button>
+      <HomeMark onClick={goEmpty} />
 
       <main className="flex flex-1 items-center justify-center px-6 py-24">
         <div className="w-full max-w-2xl">
@@ -435,29 +552,17 @@ export function Console({ hasKey }: { hasKey: boolean }) {
 
       <footer className="absolute bottom-5 left-5 right-5 flex items-center justify-between">
         <div className="flex items-center gap-6">
-          <Link
-            href="/settings"
-            className="text-lg text-zinc-600 hover:text-zinc-300"
-            title="keys"
-          >
-            π
-          </Link>
-          <a
+          <PiMark />
+          <InkLink
             href="https://github.com/doubletap-dave/the-foundry"
-            target="_blank"
-            rel="noreferrer"
-            className="text-lg text-zinc-600 hover:text-zinc-300"
+            rest="#52525b"
+            lit="#d4d4d8"
+            external
           >
             github
-          </a>
+          </InkLink>
         </div>
-        <button
-          type="button"
-          onClick={() => void openLog()}
-          className="text-lg text-zinc-600 hover:text-zinc-300"
-        >
-          built
-        </button>
+        <BuiltMark onClick={() => void openLog()} />
       </footer>
     </div>
   );
@@ -816,3 +921,4 @@ function BuiltLog({
     </div>
   );
 }
+

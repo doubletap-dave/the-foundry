@@ -103,6 +103,52 @@ export function getSpark(sparkId: string, owner?: string): SparkRow | null {
   return row;
 }
 
+export type SparkSnapshot = {
+  text: string;
+  take?: string | null;
+  hours?: string | null;
+};
+
+/** Reclaim a spark this browser owns, or recreate it from the client snapshot (Vercel /tmp). */
+export function claimSpark(
+  sparkId: string,
+  owner: string,
+  snapshot?: SparkSnapshot,
+): SparkRow | null {
+  const row = db.select().from(sparks).where(eq(sparks.id, sparkId)).get() ?? null;
+  if (row) {
+    if (row.owner && row.owner !== owner) return null;
+    if (!row.owner) {
+      db.update(sparks)
+        .set({ owner, updatedAt: new Date() })
+        .where(eq(sparks.id, sparkId))
+        .run();
+      return { ...row, owner };
+    }
+    return row;
+  }
+  const text = snapshot?.text?.trim();
+  if (!text) return null;
+  const now = new Date();
+  db.insert(sparks)
+    .values({
+      id: sparkId,
+      owner,
+      text,
+      status: snapshot?.take ? "ready" : "looking",
+      take: snapshot?.take ?? null,
+      hours: snapshot?.hours ?? null,
+      packet: null,
+      research: null,
+      legs: null,
+      error: null,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .run();
+  return getSpark(sparkId, owner);
+}
+
 function shortThought(raw: string, max = 92): string {
   const cleaned = raw.replace(/\s+/g, " ").trim();
   if (!cleaned) return "";
