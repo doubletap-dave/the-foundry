@@ -1,13 +1,14 @@
 # Foundry
 
-A spark. One take. A build.
+Type a spark. Foundry looks it up, argues with it, and hands you one take.
 
-Type a spark on the console. Foundry returns one take.
-Then build it, mutate, or discard. After a build, rate whether it had legs.
-Add keys at /settings, or type keys / colon / Escape on the console.
+**Build it** does not build anything. It writes a sitting plan: what to make, what to skip, when to stop. You still have to sit down and make the thing. **Make it weirder** is another take. **Nah** throws it out. After you actually build, you can say whether it had legs.
+
+Keys stay in this browser. Never on the server. Escape or `:` for settings.
+
 Providers: OpenAI, Grok, OpenRouter, Perplexity.
 
-Keys live in your browser, never on the server.
+[the-foundry-two-topaz.vercel.app](https://the-foundry-two-topaz.vercel.app)
 
 ## Local
 
