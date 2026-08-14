@@ -17,13 +17,18 @@ import {
 } from "@/app/actions";
 import type { SparkView } from "@/lib/agent-schemas";
 import { agentBrief } from "@/lib/packet-brief";
+import {
+  mergeBuilt,
+  readCurrentSparkId,
+  recallSpark,
+  rememberSpark,
+  writeCurrentSparkId,
+} from "@/lib/browser-history";
 import { browserHasKeys, readBrowserKeys } from "@/lib/browser-keys";
 import { readBrowserModel } from "@/lib/browser-model";
 import { Md } from "@/components/md";
 import { pickSaying } from "@/lib/sayings";
 import { FadeIn, Looking } from "@/components/looking";
-
-const STORE = "foundry.sparkId";
 
 function displayError(error: string): string {
   return error
@@ -199,26 +204,24 @@ export function Console({ hasKey }: { hasKey: boolean }) {
     setError(null);
     setPending(false);
     setPhaseHint(null);
-    try {
-      sessionStorage.removeItem(STORE);
-    } catch {
-      /* ignore */
-    }
+    writeCurrentSparkId(null);
     requestAnimationFrame(() => areaRef.current?.focus());
   }, []);
 
   const openLog = useCallback(async () => {
     setError(null);
     setScreen("log");
-    try {
-      setBuilt(await listBuilt());
-    } catch {
-      setBuilt([]);
-    }
+    setBuilt(mergeBuilt(await listBuilt().catch(() => [])));
   }, []);
 
   const applySpark = useCallback((next: SparkView) => {
     setSpark(next);
+    rememberSpark(next);
+    if (next.status === "killed" || next.status === "rated") {
+      writeCurrentSparkId(null);
+    } else {
+      writeCurrentSparkId(next.id);
+    }
     if (next.status === "error") {
       setError(next.error || "Something broke.");
       setScreen(next.take ? "ready" : "empty");
@@ -240,15 +243,25 @@ export function Console({ hasKey }: { hasKey: boolean }) {
     let cancelled = false;
     async function restore() {
       try {
-        const id = sessionStorage.getItem(STORE);
+        const id = readCurrentSparkId();
         if (!id) return;
-        const row = await readSpark(id);
+        let row: SparkView | null = null;
+        try {
+          row = await readSpark(id);
+        } catch {
+          row = null;
+        }
         if (cancelled) return;
-        if (!row || row.status === "killed" || row.status === "rated") {
-          sessionStorage.removeItem(STORE);
+        const next = row ?? recallSpark(id);
+        if (!next || next.status === "killed") {
+          writeCurrentSparkId(null);
           return;
         }
-        applySpark(row);
+        if (!row && next.status === "looking" && next.take) {
+          applySpark({ ...next, status: "ready" });
+        } else {
+          applySpark(next);
+        }
       } catch {
         /* ignore */
       }
@@ -327,13 +340,7 @@ export function Console({ hasKey }: { hasKey: boolean }) {
       setError(result.error);
       return;
     }
-    try {
-      sessionStorage.setItem(STORE, result.sparkId);
-    } catch {
-      /* ignore */
-    }
-    setPhaseHint(null);
-    setSpark({
+    const looking: SparkView = {
       id: result.sparkId,
       text: trimmed,
       status: "looking",
@@ -344,7 +351,12 @@ export function Console({ hasKey }: { hasKey: boolean }) {
       error: null,
       phase: "scout",
       thoughts: [],
-    });
+      createdAt: new Date().toISOString(),
+    };
+    writeCurrentSparkId(result.sparkId);
+    rememberSpark(looking);
+    setPhaseHint(null);
+    setSpark(looking);
     setScreen("looking");
   }
 
@@ -407,21 +419,22 @@ export function Console({ hasKey }: { hasKey: boolean }) {
     setPending(true);
     await markSparkBuilt(spark.id);
     setPending(false);
+    rememberSpark({ ...spark, status: "built" });
     setScreen("legs");
   }
 
   async function onLegs(value: "yep" | "kinda" | "nope") {
-    if (spark) await rateLegs(spark.id, value);
+    if (spark) {
+      await rateLegs(spark.id, value);
+      rememberSpark({ ...spark, status: "rated", legs: value });
+    }
     goEmpty();
   }
 
   async function openBuilt(row: SparkView) {
-    try {
-      sessionStorage.setItem(STORE, row.id);
-    } catch {
-      /* ignore */
-    }
-    const fresh = (await readSpark(row.id)) ?? row;
+    writeCurrentSparkId(row.id);
+    const fresh = (await readSpark(row.id)) ?? recallSpark(row.id) ?? row;
+    rememberSpark(fresh);
     setSpark(fresh);
     setError(null);
     if (fresh.packet) setScreen("packet");
@@ -875,4 +888,3 @@ function BuiltLog({
     </div>
   );
 }
-
