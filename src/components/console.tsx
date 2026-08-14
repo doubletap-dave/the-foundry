@@ -19,6 +19,7 @@ import type { SparkView } from "@/lib/agent-schemas";
 import { browserHasKeys, readBrowserKeys } from "@/lib/browser-keys";
 import { readBrowserModel } from "@/lib/browser-model";
 import { Md } from "@/components/md";
+import { pickSaying } from "@/lib/sayings";
 import { Looking } from "@/components/looking";
 
 const STORE = "foundry.sparkId";
@@ -479,6 +480,11 @@ function Empty({
   areaRef: RefObject<HTMLTextAreaElement | null>;
 }) {
   const [focused, setFocused] = useState(false);
+  const [saying, setSaying] = useState("What's rattling around in your head?");
+
+  useEffect(() => {
+    setSaying(pickSaying());
+  }, []);
 
   useEffect(() => {
     areaRef.current?.focus();
@@ -518,7 +524,7 @@ function Empty({
   return (
     <div>
       <h1 className="mb-8 text-3xl font-medium tracking-tight text-zinc-100 md:text-4xl">
-        What&apos;s rattling around in your head?
+        {saying}
       </h1>
       <div className="relative">
         <FakeCaret show={text.length === 0 && !focused} />
@@ -779,4 +785,3 @@ function BuiltLog({
     </div>
   );
 }
-
