@@ -480,11 +480,25 @@ function Empty({
   areaRef: RefObject<HTMLTextAreaElement | null>;
 }) {
   const [focused, setFocused] = useState(false);
-  const [saying, setSaying] = useState("What's rattling around in your head?");
+  const [saying, setSaying] = useState<string | null>(null);
+  const sayingRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     setSaying(pickSaying());
   }, []);
+
+  useEffect(() => {
+    const node = sayingRef.current;
+    if (!node || !saying) return;
+    node.getAnimations().forEach((a) => a.cancel());
+    node.animate(
+      [
+        { opacity: 0 },
+        { opacity: 1 },
+      ],
+      { duration: 520, easing: "cubic-bezier(0.16, 1, 0.3, 1)", fill: "forwards" },
+    );
+  }, [saying]);
 
   useEffect(() => {
     areaRef.current?.focus();
@@ -523,8 +537,12 @@ function Empty({
 
   return (
     <div>
-      <h1 className="mb-8 text-3xl font-medium tracking-tight text-zinc-100 md:text-4xl">
-        {saying}
+      <h1
+        ref={sayingRef}
+        className="mb-8 min-h-[1.2em] text-3xl font-medium tracking-tight text-zinc-100 md:text-4xl"
+        style={{ opacity: 0 }}
+      >
+        {saying ?? '\u00a0'}
       </h1>
       <div className="relative">
         <FakeCaret show={text.length === 0 && !focused} />
