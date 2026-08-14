@@ -82,13 +82,16 @@ function Sparkle() {
   );
 }
 
+function lineFor(phase: SparkPhase): string {
+  const list = STATUS[phase];
+  return list[Math.floor(Math.random() * list.length)] ?? list[0];
+}
+
 function StatusLine({ phase }: { phase: SparkPhase }) {
-  const phrases = STATUS[phase];
   const el = useRef<HTMLParagraphElement>(null);
-  const indexRef = useRef(0);
   const firstRef = useRef(true);
   const aliveRef = useRef(true);
-  const [display, setDisplay] = useState(phrases[0]);
+  const [display, setDisplay] = useState(() => STATUS[phase][0]);
 
   useEffect(() => {
     aliveRef.current = true;
@@ -104,8 +107,8 @@ function StatusLine({ phase }: { phase: SparkPhase }) {
     anime({
       targets: node,
       opacity: [0, 1],
-      translateY: [10, 0],
-      duration: 420,
+      translateY: [8, 0],
+      duration: 560,
       easing: "easeOutCubic",
     });
     return () => {
@@ -114,54 +117,34 @@ function StatusLine({ phase }: { phase: SparkPhase }) {
   }, [display]);
 
   useEffect(() => {
-    indexRef.current = 0;
-    const next = STATUS[phase][0];
+    const next = lineFor(phase);
     const node = el.current;
 
     if (firstRef.current) {
       firstRef.current = false;
       setDisplay(next);
-    } else if (node) {
-      anime.remove(node);
-      anime({
-        targets: node,
-        opacity: [1, 0],
-        translateY: [0, -8],
-        duration: 220,
-        easing: "easeInCubic",
-        complete: () => {
-          if (!aliveRef.current) return;
-          setDisplay(next);
-        },
-      });
-    } else {
-      setDisplay(next);
+      return;
     }
 
-    const list = STATUS[phase];
-    if (list.length < 2) return;
+    if (!node) {
+      setDisplay(next);
+      return;
+    }
 
-    const hold = window.setInterval(() => {
-      const target = el.current;
-      if (!target || !aliveRef.current) return;
-      anime.remove(target);
-      anime({
-        targets: target,
-        opacity: [1, 0],
-        translateY: [0, -8],
-        duration: 220,
-        easing: "easeInCubic",
-        complete: () => {
-          if (!aliveRef.current) return;
-          const cycle = STATUS[phase];
-          indexRef.current = (indexRef.current + 1) % cycle.length;
-          setDisplay(cycle[indexRef.current]);
-        },
-      });
-    }, 2200);
+    anime.remove(node);
+    anime({
+      targets: node,
+      opacity: [1, 0],
+      translateY: [0, -6],
+      duration: 320,
+      easing: "easeInCubic",
+      complete: () => {
+        if (!aliveRef.current) return;
+        setDisplay(next);
+      },
+    });
 
     return () => {
-      window.clearInterval(hold);
       if (el.current) anime.remove(el.current);
     };
   }, [phase]);
