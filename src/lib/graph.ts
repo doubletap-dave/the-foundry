@@ -40,6 +40,13 @@ type State = typeof FoundryState.State;
 
 const running = new Set<string>();
 
+function isOpenSpark(idea: string): boolean {
+  return /\b(any(thing| program| software| app| project)?|whatever you want|what would you (build|make)|you (choose|pick|decide)|blank check|free rein|your (call|choice)|if you could)\b/i.test(
+    idea,
+  );
+}
+
+
 function patchSpark(
   sparkId: string,
   values: Partial<{
@@ -85,8 +92,8 @@ async function scoutNode(state: State): Promise<Partial<State>> {
 Question: What is true here?
 Map existing tools, APIs, datasets, constraints, competitors, feasibility, gaps.
 Be aggressive about what is NOT possible. No incense. No cheerleading. Short bullets.
-If you have citations or URLs, put them in sources.
-You are Foundry. If the spark is open ("anything", "any program", "what would you build"), do not treat idea-pickers, kill-switches for ideas, spark consoles, or Notion-for-dreams as the space. That is this program. Look at a real object in the world instead.`,
+If you have citations or URLs, put them in sources.${isOpenSpark(state.idea) ? `
+The spark is wide open. Pick a surprising concrete domain and map that: a game overlay, a kitchen object, a radio, a dusty public API, a local ritual, a one-job utility. Name nouns. What already exists there. What a sitting can finish.` : ""}`,
     `Spark:\n${state.idea}`,
     SCOUT_HINT,
     0.3,
@@ -114,8 +121,8 @@ async function contrarianNode(state: State): Promise<Partial<State>> {
     contrarianSchema,
     `Question: What is the obvious shitty version?
 Kill "AI-powered dashboard for X". Kill chat wrappers. Kill empty workspaces.
-Kill Foundry clones: idea consoles, spark boxes, 90-day kill-switches, "pick one idea and ship" coaches, tools whose job is choosing what to build. That is this program. Name it in the graveyard if it shows up.
-Be aggressive. Name the graveyard this idea will join if it is built the obvious way.`,
+Be aggressive. Name the graveyard this idea will join if it is built the obvious way.
+If the spark is wide open, steer the angles toward a named object in the world, not another way of thinking about building.`,
     `Spark:\n${state.idea}\n\nResearch:\n${JSON.stringify(state.scout, null, 2)}${extra}`,
     CONTRARIAN_HINT,
     state.weirder ? 0.85 : 0.7,
@@ -160,10 +167,14 @@ Name the interesting route. Say why the obvious one is dead. Say roughly how lon
 End the paragraph by asking if they want the build packet.
 hours is a human phrase like "2–3 hours".
 Do NOT write a plan, steps, files, stack, or packet. Take only. The packet is written later, if they ask.
-Never propose Foundry, or a cousin of Foundry, as the thing to build: no idea consoles, spark boxes, kill-switches for ideas, "make you pick one" coaches, infinite idea boards, Notion-for-dreams. That is this program talking about itself. Stay weird. Stay concrete. If the spark is a blank check, name a strange object in the world someone can sit down and make — a game, a device, a local ritual, a filthy little utility — not a meta-tool about ideas.`,
-    `Spark:\n${state.idea}\n\nResearch:\n${JSON.stringify(state.scout, null, 2)}\n\nContrarian:\n${JSON.stringify(state.contrarian, null, 2)}${extra}`,
+The take's first sentence names a concrete object: a thing with a body, a screen, a file, a room, a player. Surprise him. Stay weird.`,
+    `Spark:\n${state.idea}\n\nResearch:\n${JSON.stringify(state.scout, null, 2)}\n\nContrarian:\n${JSON.stringify(state.contrarian, null, 2)}${extra}${
+      isOpenSpark(state.idea)
+        ? "\n\nDave handed you a blank check. First sentence names the object. The kind of thing that lands: a radio that only works in a storm, a one-raid loot verdict, a kitchen timer with a personality. Surprise him."
+        : ""
+    }`,
     INTERPRET_HINT,
-    state.weirder ? 0.7 : 0.5,
+    state.weirder || isOpenSpark(state.idea) ? 0.85 : 0.5,
   );
   patchSpark(state.sparkId, {
     status: "ready",
