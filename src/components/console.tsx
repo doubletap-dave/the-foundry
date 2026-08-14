@@ -56,8 +56,8 @@ function WordButton({
       disabled={disabled}
       className={
         dim
-          ? "text-[13px] tracking-[0.14em] text-zinc-500 uppercase hover:text-zinc-200 disabled:opacity-40"
-          : "text-[13px] tracking-[0.14em] text-zinc-300 uppercase hover:text-ember-glow disabled:opacity-40"
+          ? "text-lg text-zinc-500 hover:text-zinc-200 disabled:opacity-40 md:text-xl"
+          : "text-lg text-zinc-300 hover:text-ember-glow disabled:opacity-40 md:text-xl"
       }
     >
       {children}
@@ -328,9 +328,9 @@ export function Console({ hasKey }: { hasKey: boolean }) {
       <button
         type="button"
         onClick={goEmpty}
-        className="absolute left-5 top-5 font-mono text-[10px] uppercase tracking-[0.28em] text-zinc-700 hover:text-zinc-400"
+        className="absolute left-6 top-6 text-3xl font-medium tracking-tight text-zinc-500 hover:text-zinc-200 md:text-4xl lg:text-5xl"
       >
-        foundry
+        Foundry
       </button>
 
       <main className="flex flex-1 items-center justify-center px-6 py-24">
@@ -391,7 +391,7 @@ export function Console({ hasKey }: { hasKey: boolean }) {
       <footer className="absolute bottom-5 left-5 right-5 flex items-center justify-between">
         <Link
           href="/settings"
-          className="font-mono text-sm text-zinc-700 hover:text-zinc-400"
+          className="text-base text-zinc-600 hover:text-zinc-300"
           title="keys"
         >
           :
@@ -399,7 +399,7 @@ export function Console({ hasKey }: { hasKey: boolean }) {
         <button
           type="button"
           onClick={() => void openLog()}
-          className="font-mono text-sm text-zinc-700 hover:text-zinc-400"
+          className="text-base text-zinc-600 hover:text-zinc-300"
         >
           built
         </button>
@@ -537,13 +537,13 @@ function Ready({
       {error ? <p className="mt-6 font-mono text-xs text-zinc-500">{error}</p> : null}
       <div className="mt-12 flex flex-wrap items-center gap-x-8 gap-y-3">
         <WordButton onClick={onBuild} disabled={pending}>
-          BUILD IT
+          Build it
         </WordButton>
         <WordButton onClick={onWeirder} disabled={pending} dim>
-          MAKE IT WEIRDER
+          Make it weirder
         </WordButton>
         <WordButton onClick={onNah} disabled={pending} dim>
-          NAH
+          Nah
         </WordButton>
       </div>
       <textarea
@@ -602,7 +602,7 @@ function PacketView({
       ) : null}
       {blocks.map((b) => (
         <div key={b.k}>
-          <p className="mb-2 font-mono text-[11px] uppercase tracking-[0.2em] text-zinc-600">
+          <p className="mb-2 text-sm text-zinc-500">
             {b.k}
           </p>
           <Md className="text-lg leading-relaxed text-zinc-200">{b.v}</Md>
@@ -611,10 +611,10 @@ function PacketView({
       <div className="pt-4">
         {status === "building" ? (
           <WordButton onClick={onBuilt} disabled={pending}>
-            I BUILT IT
+            I built it
           </WordButton>
         ) : done ? (
-          <p className="font-mono text-xs uppercase tracking-[0.16em] text-zinc-600">
+          <p className="text-sm text-zinc-500">
             {legs ? `legs · ${legs}` : "built"}
           </p>
         ) : null}
@@ -654,7 +654,7 @@ function BuiltLog({
   }
   return (
     <div className="space-y-8">
-      <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-zinc-600">built</p>
+      <p className="text-sm text-zinc-500">built</p>
       <ul className="space-y-6">
         {rows.map((row) => (
           <li key={row.id}>
@@ -671,3 +671,4 @@ function BuiltLog({
     </div>
   );
 }
+
