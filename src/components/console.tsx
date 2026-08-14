@@ -21,7 +21,6 @@ import { readBrowserModel } from "@/lib/browser-model";
 import { Md } from "@/components/md";
 import { pickSaying } from "@/lib/sayings";
 import { FadeIn, Looking } from "@/components/looking";
-import { ink } from "@/lib/motion";
 
 const STORE = "foundry.sparkId";
 
@@ -54,18 +53,8 @@ function isSettingsCommand(raw: string): boolean {
 }
 
 function SettingsWord({ className }: { className?: string }) {
-  const ref = useRef<HTMLAnchorElement>(null);
-  const rest = "#a1a1aa";
-  const lit = "#e4e4e7";
   return (
-    <Link
-      href="/settings"
-      ref={ref}
-      className={className ?? "text-zinc-400"}
-      style={{ color: rest }}
-      onMouseEnter={() => ink(ref.current, lit)}
-      onMouseLeave={() => ink(ref.current, rest)}
-    >
+    <Link href="/settings" className={className ?? "foundry-ink text-zinc-400 hover:text-zinc-200"}>
       settings
     </Link>
   );
@@ -73,83 +62,46 @@ function SettingsWord({ className }: { className?: string }) {
 
 function InkLink({
   href,
-  rest,
-  lit,
-  className,
   children,
   title,
   external,
 }: {
   href: string;
-  rest: string;
-  lit: string;
-  className?: string;
   children: ReactNode;
   title?: string;
   external?: boolean;
 }) {
-  const ref = useRef<HTMLAnchorElement>(null);
-  const cls = className ?? "text-lg";
-  const handlers = {
-    style: { color: rest },
-    onMouseEnter: () => ink(ref.current, lit),
-    onMouseLeave: () => ink(ref.current, rest),
-  };
+  const cls = "foundry-ink text-lg text-zinc-600 hover:text-zinc-300";
   if (external) {
     return (
-      <a ref={ref} href={href} target="_blank" rel="noreferrer" title={title} className={cls} {...handlers}>
+      <a href={href} target="_blank" rel="noreferrer" title={title} className={cls}>
         {children}
       </a>
     );
   }
   return (
-    <Link ref={ref} href={href} title={title} className={cls} {...handlers}>
+    <Link href={href} title={title} className={cls}>
       {children}
     </Link>
   );
 }
 
-
 function BuiltMark({ onClick }: { onClick: () => void }) {
-  const ref = useRef<HTMLButtonElement>(null);
-  const rest = "#52525b";
-  const lit = "#d4d4d8";
   return (
-    <button
-      ref={ref}
-      type="button"
-      onClick={onClick}
-      className="text-lg"
-      style={{ color: rest }}
-      onMouseEnter={() => ink(ref.current, lit)}
-      onMouseLeave={() => ink(ref.current, rest)}
-    >
+    <button type="button" onClick={onClick} className="foundry-ink text-lg text-zinc-600 hover:text-zinc-300">
       built
     </button>
   );
 }
 
 function PiMark() {
-  const ref = useRef<HTMLAnchorElement>(null);
-  const rest = "#52525b";
-  const lit = "#d4d4d8";
   return (
     <Link
-      ref={ref}
       href="/settings"
       title="keys"
-      className="foundry-pi relative inline-flex h-7 w-7 items-center justify-center text-lg"
-      style={{ color: rest }}
-      onMouseEnter={() => ink(ref.current, lit)}
-      onMouseLeave={() => ink(ref.current, rest)}
+      className="foundry-pi inline-flex h-7 w-7 items-center justify-center text-lg"
     >
       π
-      <span className="foundry-pi-glint" aria-hidden>
-        <i />
-        <i />
-        <i />
-        <i />
-      </span>
     </Link>
   );
 }
@@ -192,21 +144,16 @@ function WordButton({
   disabled?: boolean;
   dim?: boolean;
 }) {
-  const ref = useRef<HTMLButtonElement>(null);
-  const rest = dim ? "#71717a" : "#d4d4d8";
-  const lit = dim ? "#e4e4e7" : "#e08a55";
   return (
     <button
-      ref={ref}
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="text-lg disabled:opacity-40 md:text-xl"
-      style={{ color: rest }}
-      onMouseEnter={() => {
-        if (!disabled) ink(ref.current, lit);
-      }}
-      onMouseLeave={() => ink(ref.current, rest)}
+      className={
+        dim
+          ? "foundry-ink text-lg text-zinc-500 hover:text-zinc-200 disabled:opacity-40 md:text-xl"
+          : "foundry-ink text-lg text-zinc-300 hover:text-ember-glow disabled:opacity-40 md:text-xl"
+      }
     >
       {children}
     </button>
@@ -219,18 +166,11 @@ function snapOf(spark: SparkView) {
 
 
 function HomeMark({ onClick }: { onClick: () => void }) {
-  const ref = useRef<HTMLButtonElement>(null);
-  const rest = "#71717a";
-  const lit = "#e4e4e7";
   return (
     <button
-      ref={ref}
       type="button"
       onClick={onClick}
-      className="absolute left-6 top-6 text-2xl font-medium tracking-tight md:text-3xl lg:text-4xl"
-      style={{ color: rest }}
-      onMouseEnter={() => ink(ref.current, lit)}
-      onMouseLeave={() => ink(ref.current, rest)}
+      className="foundry-ink absolute left-6 top-6 text-2xl font-medium tracking-tight text-zinc-500 hover:text-zinc-200 md:text-3xl lg:text-4xl"
     >
       The Foundry
     </button>
@@ -553,12 +493,7 @@ export function Console({ hasKey }: { hasKey: boolean }) {
       <footer className="absolute bottom-5 left-5 right-5 flex items-center justify-between">
         <div className="flex items-center gap-6">
           <PiMark />
-          <InkLink
-            href="https://github.com/doubletap-dave/the-foundry"
-            rest="#52525b"
-            lit="#d4d4d8"
-            external
-          >
+          <InkLink href="https://github.com/doubletap-dave/the-foundry" external>
             github
           </InkLink>
         </div>
@@ -677,7 +612,7 @@ function Empty({
             <span className="text-zinc-400">
               {shown}{" "}
               {keyRelated(error) ? (
-                <SettingsWord className="text-ember hover:text-ember-glow" />
+                <SettingsWord className="foundry-ink text-ember hover:text-ember-glow" />
               ) : null}
             </span>
           ) : !hasKey && keysReady ? (
@@ -772,7 +707,7 @@ function Ready({
         <p className="mt-6 text-sm text-zinc-500">
           {shown}{" "}
           {keyRelated(error) ? (
-            <SettingsWord className="text-ember hover:text-ember-glow" />
+            <SettingsWord className="foundry-ink text-ember hover:text-ember-glow" />
           ) : null}
         </p>
       ) : null}
@@ -921,3 +856,4 @@ function BuiltLog({
     </div>
   );
 }
+
