@@ -30,9 +30,10 @@ export function writeBrowserKeys(keys: RequestKeys): void {
   }
   if (Object.keys(clean).length === 0) {
     localStorage.removeItem(KEYS_STORE);
-    return;
+  } else {
+    localStorage.setItem(KEYS_STORE, JSON.stringify(clean));
   }
-  localStorage.setItem(KEYS_STORE, JSON.stringify(clean));
+  window.dispatchEvent(new Event("foundry-keys"));
 }
 
 export function browserHasKeys(): boolean {

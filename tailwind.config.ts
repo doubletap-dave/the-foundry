@@ -17,8 +17,8 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ["var(--font-geist-sans)", "ui-sans-serif", "system-ui"],
-        mono: ["var(--font-geist-mono)", "ui-monospace", "monospace"],
+        sans: ["var(--font-plex-sans)", "ui-sans-serif", "system-ui"],
+        mono: ["var(--font-plex-mono)", "ui-monospace", "monospace"],
       },
       letterSpacing: {
         mark: "0.28em",

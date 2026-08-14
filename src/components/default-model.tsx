@@ -1,16 +1,22 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { loadOneCatalog, saveModelConfigs } from "@/app/actions";
 import { readBrowserKeys } from "@/lib/browser-keys";
 import {
   PROVIDER_IDS,
   PROVIDERS,
   defaultModelFor,
+  providerLabel,
   type CatalogEntry,
   type Provider,
 } from "@/lib/models";
 import { cn } from "@/lib/utils";
+
+function keyedFromBrowser(): Provider[] {
+  const bag = readBrowserKeys();
+  return PROVIDER_IDS.filter((id) => Boolean(bag[id]));
+}
 
 export function DefaultModel({
   initial,
@@ -24,55 +30,89 @@ export function DefaultModel({
   const [provider, setProvider] = useState<Provider>(initial.provider);
   const [model, setModel] = useState(initial.model);
   const [catalogs, setCatalogs] = useState(initialCatalogs);
-  const [query, setQuery] = useState("");
-  const [open, setOpen] = useState(false);
+  const [keyed, setKeyed] = useState<Provider[]>(() =>
+    PROVIDER_IDS.filter((id) => keySet[id]),
+  );
+  const [looking, setLooking] = useState(false);
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [pending, start] = useTransition();
-  const [haveKey, setHaveKey] = useState(keySet);
+  const [, start] = useTransition();
+  const fetchFor = useRef<Provider | null>(null);
 
   useEffect(() => {
-    const bag = readBrowserKeys();
-    setHaveKey((prev) => {
-      const next = { ...prev };
-      for (const id of PROVIDER_IDS) {
-        if (bag[id]) next[id] = true;
-      }
-      return next;
-    });
+    function sync() {
+      const next = keyedFromBrowser();
+      setKeyed(next);
+      setProvider((current) => {
+        if (next.length === 0) return current;
+        if (next.length === 1) return next[0];
+        if (!next.includes(current)) return next[0];
+        return current;
+      });
+    }
+    sync();
+    window.addEventListener("foundry-keys", sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener("foundry-keys", sync);
+      window.removeEventListener("storage", sync);
+    };
   }, []);
 
-  const options = useMemo(() => {
-    const q = query.toLowerCase().trim();
-    const list = catalogs[provider] ?? [];
-    return list.filter((m) => (q ? `${m.id} ${m.label}`.toLowerCase().includes(q) : true));
-  }, [catalogs, provider, query]);
-
-  function needCatalog(p: Provider) {
-    if ((catalogs[p] ?? []).length > 0) return;
-    if (!haveKey[p]) return;
-    start(async () => {
-      const result = await loadOneCatalog(p, readBrowserKeys()[p]);
+  useEffect(() => {
+    if (!keyed.includes(provider)) {
+      setLooking(false);
+      return;
+    }
+    if ((catalogs[provider] ?? []).length > 0) {
+      setLooking(false);
+      return;
+    }
+    const key = readBrowserKeys()[provider];
+    if (!key) {
+      setLooking(false);
+      return;
+    }
+    if (fetchFor.current === provider) return;
+    fetchFor.current = provider;
+    let cancelled = false;
+    setLooking(true);
+    setErr(null);
+    void loadOneCatalog(provider, readBrowserKeys()[provider]).then((result) => {
+      if (fetchFor.current === provider) fetchFor.current = null;
+      if (cancelled) return;
+      setLooking(false);
       if ("models" in result && result.models) {
-        setCatalogs((prev) => ({ ...prev, [p]: result.models }));
+        setCatalogs((prev) => ({ ...prev, [provider]: result.models }));
+        setModel((current) => {
+          if (result.models.some((m) => m.id === current)) return current;
+          return result.models[0]?.id ?? defaultModelFor(provider);
+        });
+      } else if ("error" in result) {
+        setErr(result.error);
       }
     });
-  }
+    return () => {
+      cancelled = true;
+    };
+  }, [provider, keyed, catalogs]);
 
   function pickProvider(p: Provider) {
-    const first = (catalogs[p] ?? [])[0];
+    if (p === provider) return;
     setProvider(p);
+    const first = (catalogs[p] ?? [])[0];
     setModel(first?.id ?? defaultModelFor(p));
-    setQuery("");
     setSaved(false);
-    if (haveKey[p]) needCatalog(p);
+    setErr(null);
   }
 
-  function onSave() {
+  function pickModel(id: string) {
+    setModel(id);
+    setSaved(false);
     setErr(null);
     start(async () => {
       const result = await saveModelConfigs({
-        configs: [{ role: "default", provider, model }],
+        configs: [{ role: "default", provider, model: id }],
       });
       if ("error" in result) {
         setErr(result.error);
@@ -82,91 +122,57 @@ export function DefaultModel({
     });
   }
 
+  const list = catalogs[provider] ?? [];
+
+  if (keyed.length === 0) {
+    return <p className="text-sm text-zinc-600">Add a key first.</p>;
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-4">
-        {PROVIDERS.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            onClick={() => pickProvider(p.id)}
-            className={cn(
-              "text-sm",
-              provider === p.id ? "text-ember" : "text-zinc-600 hover:text-zinc-300",
-            )}
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
-      {!haveKey[provider] ? (
-        <p className="text-sm text-zinc-600">Add a key first.</p>
+      {keyed.length === 1 ? (
+        <p className="text-sm text-zinc-600">{providerLabel(keyed[0])}</p>
       ) : (
-        <div className="relative max-w-md">
-          <input
-            value={open ? query : model}
-            onFocus={() => {
-              setOpen(true);
-              setQuery(model);
-              needCatalog(provider);
-            }}
-            onChange={(e) => {
-              setOpen(true);
-              setQuery(e.target.value);
-              setSaved(false);
-            }}
-            onBlur={() => {
-              const typed = query.trim();
-              if (typed && typed !== model) setModel(typed);
-              window.setTimeout(() => setOpen(false), 120);
-            }}
-            spellCheck={false}
-            className="w-full border-b border-zinc-800 bg-transparent py-2 font-mono text-sm text-zinc-200 outline-none focus:border-zinc-500"
-          />
-          {open ? (
-            <ul className="absolute z-20 mt-1 max-h-48 w-full overflow-auto bg-zinc-950">
-              {options.length === 0 ? (
-                <li className="py-2 text-sm text-zinc-600">
-                  {query.trim() ? `use “${query.trim()}”` : "type an id"}
-                </li>
-              ) : (
-                options.map((m) => (
-                  <li key={m.id}>
-                    <button
-                      type="button"
-                      className={cn(
-                        "w-full py-1.5 text-left text-sm hover:text-ember",
-                        m.id === model ? "text-ember" : "text-zinc-400",
-                      )}
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => {
-                        setModel(m.id);
-                        setQuery("");
-                        setOpen(false);
-                        setSaved(false);
-                      }}
-                    >
-                      {m.label}
-                    </button>
-                  </li>
-                ))
+        <div className="flex flex-wrap gap-4">
+          {PROVIDERS.filter((p) => keyed.includes(p.id)).map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => pickProvider(p.id)}
+              className={cn(
+                "text-sm",
+                provider === p.id ? "text-ember" : "text-zinc-600 hover:text-zinc-300",
               )}
-            </ul>
-          ) : null}
+            >
+              {p.label}
+            </button>
+          ))}
         </div>
       )}
-      <div className="flex items-center gap-4 pt-2">
-        <button
-          type="button"
-          onClick={onSave}
-          disabled={pending}
-          className="text-sm text-zinc-400 hover:text-zinc-100 disabled:opacity-40"
-        >
-          {pending ? "saving" : "save"}
-        </button>
-        {saved ? <span className="text-sm text-zinc-600">ok</span> : null}
-        {err ? <span className="text-sm text-zinc-500">{err}</span> : null}
-      </div>
+
+      {looking ? <p className="text-sm text-zinc-600">looking up models.</p> : null}
+
+      {list.length > 0 ? (
+        <ul className="max-h-72 overflow-auto">
+          {list.map((m) => (
+            <li key={m.id}>
+              <button
+                type="button"
+                onClick={() => pickModel(m.id)}
+                className={cn(
+                  "w-full py-1.5 text-left text-sm hover:text-ember",
+                  m.id === model ? "text-ember" : "text-zinc-400",
+                )}
+              >
+                {m.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {saved ? <p className="text-sm text-zinc-600">ok</p> : null}
+      {err ? <p className="text-sm text-zinc-500">{err}</p> : null}
     </div>
   );
 }

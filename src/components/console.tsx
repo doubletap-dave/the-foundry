@@ -202,7 +202,7 @@ export function Console({ hasKey }: { hasKey: boolean }) {
 
   async function send() {
     const trimmed = text.trim();
-    if (trimmed === "keys" || trimmed === ":" || trimmed === "settings") {
+    if (trimmed === "keys" || trimmed === ":" || trimmed === "π" || trimmed === "pi" || trimmed === "settings") {
       router.push("/settings");
       return;
     }
@@ -328,9 +328,9 @@ export function Console({ hasKey }: { hasKey: boolean }) {
       <button
         type="button"
         onClick={goEmpty}
-        className="absolute left-6 top-6 text-3xl font-medium tracking-tight text-zinc-500 hover:text-zinc-200 md:text-4xl lg:text-5xl"
+        className="absolute left-6 top-6 text-2xl font-medium tracking-tight text-zinc-500 hover:text-zinc-200 md:text-3xl lg:text-4xl"
       >
-        Foundry
+        The Foundry
       </button>
 
       <main className="flex flex-1 items-center justify-center px-6 py-24">
@@ -392,16 +392,16 @@ export function Console({ hasKey }: { hasKey: boolean }) {
         <div className="flex items-center gap-6">
           <Link
             href="/settings"
-            className="text-base text-zinc-600 hover:text-zinc-300"
+            className="text-lg text-zinc-600 hover:text-zinc-300"
             title="keys"
           >
-            :
+            π
           </Link>
           <a
             href="https://github.com/doubletap-dave/the-foundry"
             target="_blank"
             rel="noreferrer"
-            className="text-base text-zinc-600 hover:text-zinc-300"
+            className="text-lg text-zinc-600 hover:text-zinc-300"
           >
             github
           </a>
@@ -409,7 +409,7 @@ export function Console({ hasKey }: { hasKey: boolean }) {
         <button
           type="button"
           onClick={() => void openLog()}
-          className="text-base text-zinc-600 hover:text-zinc-300"
+          className="text-lg text-zinc-600 hover:text-zinc-300"
         >
           built
         </button>
@@ -458,7 +458,7 @@ function Empty({
         className="w-full resize-none bg-transparent text-xl leading-relaxed text-zinc-200 outline-none placeholder:text-zinc-700 md:text-2xl"
       />
       <div className="mt-6 flex items-center justify-between gap-4">
-        <p className="text-xs text-zinc-600">
+        <p className="text-sm text-zinc-600">
           {error ? (
             <span className="text-zinc-400">
               {error}{" "}
@@ -544,7 +544,7 @@ function Ready({
       <Md className="text-xl leading-relaxed text-zinc-200 md:text-2xl md:leading-relaxed">
         {take}
       </Md>
-      {error ? <p className="mt-6 text-xs text-zinc-500">{error}</p> : null}
+      {error ? <p className="mt-6 text-sm text-zinc-500">{error}</p> : null}
       <div className="mt-12 flex flex-wrap items-center gap-x-8 gap-y-3">
         <WordButton onClick={onBuild} disabled={pending}>
           Build it
@@ -670,7 +670,7 @@ function BuiltLog({
           <li key={row.id}>
             <button type="button" onClick={() => onOpen(row)} className="block w-full text-left">
               <p className="text-lg leading-snug text-zinc-200 hover:text-zinc-50">{row.text}</p>
-              <p className="mt-1 text-xs text-zinc-600">
+              <p className="mt-1 text-sm text-zinc-600">
                 {row.hours ?? "—"}
                 {row.legs ? ` · ${row.legs}` : ""}
               </p>
@@ -681,3 +681,4 @@ function BuiltLog({
     </div>
   );
 }
+

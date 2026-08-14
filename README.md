@@ -1,20 +1,7 @@
 # The Foundry
 
-Type a spark. The Foundry looks it up, argues with it, and hands you one take.
-
-**Build it** does not build anything. It writes a sitting plan: what to make, what to skip, when to stop. You still have to sit down and make the thing. **Make it weirder** is another take. **Nah** throws it out. After you actually build, you can say whether it had legs.
-
-Keys stay in this browser. Never on the server. Escape or π for settings.
-
+Type a spark on the console. The Foundry returns one take.
+Then build it, mutate, or discard. After a build, rate whether it had legs.
+Add keys at /settings, or type keys / colon / Escape on the console.
 Providers: OpenAI, Grok, OpenRouter, Perplexity.
-
-[the-foundry-two-topaz.vercel.app](https://the-foundry-two-topaz.vercel.app)
-
-## Local
-
-```bash
-npm install
-npm run dev
-```
-
-Open http://localhost:3000. SQLite lives at `data/foundry.db`.
+Dev server: port 3000. Database: data/foundry.db.
