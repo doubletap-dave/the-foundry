@@ -156,7 +156,7 @@ function shortThought(raw: string, max = 92): string {
   return `${cleaned.slice(0, max - 1).trimEnd()}…`;
 }
 
-function pickThoughtLines(pools: Array<string[] | undefined>, n = 2): string[] {
+function pickThoughtLines(pools: Array<string[] | undefined>, n = 3): string[] {
   const out: string[] = [];
   for (const pool of pools) {
     if (!pool) continue;
@@ -187,6 +187,7 @@ function researchThoughts(research: SparkResearch): SparkThought[] {
       agent: "scout",
       lines: pickThoughtLines([
         research.scout.openings,
+        research.scout.constraints,
         research.scout.existing,
         research.scout.notPossible,
       ]),
@@ -196,9 +197,10 @@ function researchThoughts(research: SparkResearch): SparkThought[] {
     thoughts.push({
       agent: "contrarian",
       lines: pickThoughtLines([
-        research.contrarian.obviousVersions,
-        research.contrarian.angles,
         research.contrarian.whyBad,
+        research.contrarian.angles,
+        research.contrarian.constraintsToExploit,
+        research.contrarian.obviousVersions,
       ]),
     });
   }

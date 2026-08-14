@@ -1,43 +1,67 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import anime from "@/vendor/anime.js";
 import type { SparkPhase, SparkThought } from "@/lib/agent-schemas";
 
 export type { SparkPhase, SparkThought };
 
-const STATUS: Record<SparkPhase, string[]> = {
+type SeatId = "scout" | "contrarian" | "builder";
+type SeatState = "waiting" | "live" | "done";
+
+const LOOKING_AT: Record<SeatId, string[]> = {
   scout: [
-    "Looking around.",
-    "Checking what already exists.",
-    "Mapping the constraints.",
-    "Finding the gaps.",
-    "Sitting with the space.",
+    "What already exists in this space",
+    "Where the data actually lives",
+    "What's fake or impossible",
+    "The constraint that would kill a clone",
   ],
   contrarian: [
-    "Killing the obvious version.",
-    "Looking for the graveyard.",
-    "Finding a stranger object.",
-    "Turning it over.",
+    "The obvious product",
+    "Why that version gets hated",
+    "A constraint worth exploiting",
   ],
-  interpret: [
-    "Picking a route.",
-    "Sharpening the take.",
-    "Naming the interesting one.",
-  ],
-  packet: [
-    "Writing the sitting plan.",
-    "Laying out the first step.",
-    "Deciding what not to build.",
-    "Making it followable.",
+  builder: [
+    "The smallest version worth touching",
+    "What not to build this sitting",
   ],
 };
 
-const NAMES: Record<"scout" | "contrarian" | "maker", string> = {
+const HANDOFF: Partial<Record<SeatId, { to: string; note: string }>> = {
+  scout: {
+    to: "Contrarian",
+    note: "Kill the obvious version. Find the constraint it's hiding.",
+  },
+  contrarian: {
+    to: "Builder",
+    note: "Make the smallest honest sitting of the weird route.",
+  },
+};
+
+const NAMES: Record<SeatId, string> = {
   scout: "Scout",
   contrarian: "Contrarian",
-  maker: "Maker",
+  builder: "Builder",
 };
+
+function seatState(id: SeatId, phase: SparkPhase): SeatState {
+  if (phase === "scout") {
+    if (id === "scout") return "live";
+    return "waiting";
+  }
+  if (phase === "contrarian") {
+    if (id === "scout") return "done";
+    if (id === "contrarian") return "live";
+    return "waiting";
+  }
+  if (id === "builder") return "live";
+  return "done";
+}
+
+function foundFor(id: SeatId, thoughts: SparkThought[]): string[] {
+  const agent = id === "builder" ? "maker" : id;
+  return thoughts.find((t) => t.agent === agent)?.lines ?? [];
+}
 
 export function FadeIn({
   children,
@@ -82,88 +106,17 @@ function Sparkle() {
   );
 }
 
-function lineFor(phase: SparkPhase): string {
-  const list = STATUS[phase];
-  return list[Math.floor(Math.random() * list.length)] ?? list[0];
-}
-
-function StatusLine({ phase }: { phase: SparkPhase }) {
-  const el = useRef<HTMLParagraphElement>(null);
-  const firstRef = useRef(true);
-  const aliveRef = useRef(true);
-  const [display, setDisplay] = useState(() => STATUS[phase][0]);
-
-  useEffect(() => {
-    aliveRef.current = true;
-    return () => {
-      aliveRef.current = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    const node = el.current;
-    if (!node) return;
-    anime.remove(node);
-    anime({
-      targets: node,
-      opacity: [0, 1],
-      translateY: [8, 0],
-      duration: 560,
-      easing: "easeOutCubic",
-    });
-    return () => {
-      anime.remove(node);
-    };
-  }, [display]);
-
-  useEffect(() => {
-    const next = lineFor(phase);
-    const node = el.current;
-
-    if (firstRef.current) {
-      firstRef.current = false;
-      setDisplay(next);
-      return;
-    }
-
-    if (!node) {
-      setDisplay(next);
-      return;
-    }
-
-    anime.remove(node);
-    anime({
-      targets: node,
-      opacity: [1, 0],
-      translateY: [0, -6],
-      duration: 320,
-      easing: "easeInCubic",
-      complete: () => {
-        if (!aliveRef.current) return;
-        setDisplay(next);
-      },
-    });
-
-    return () => {
-      if (el.current) anime.remove(el.current);
-    };
-  }, [phase]);
-
-  return (
-    <p ref={el} className="text-lg text-zinc-300" style={{ opacity: 0 }}>
-      {display}
-    </p>
-  );
-}
-
-function ThoughtCard({
-  agent,
-  lines,
+function Seat({
+  id,
+  state,
+  found,
 }: {
-  agent: "scout" | "contrarian" | "maker";
-  lines: string[];
+  id: SeatId;
+  state: SeatState;
+  found: string[];
 }) {
   const el = useRef<HTMLDivElement>(null);
+  const prev = useRef(state);
 
   useEffect(() => {
     const node = el.current;
@@ -171,27 +124,72 @@ function ThoughtCard({
     anime.remove(node);
     anime({
       targets: node,
-      opacity: [0, 1],
-      translateY: [16, 0],
-      duration: 560,
+      opacity: [prev.current === state ? 0 : 0.55, 1],
+      translateY: [10, 0],
+      duration: 480,
       easing: "easeOutCubic",
-      delay: 40,
     });
+    prev.current = state;
     return () => {
       anime.remove(node);
     };
-  }, []);
+  }, [state, found.join("|")]);
+
+  const handoff = state === "done" ? HANDOFF[id] : null;
+  const looking = state === "live" ? LOOKING_AT[id] : [];
 
   return (
-    <div ref={el} className="border-l border-zinc-800 pl-3.5" style={{ opacity: 0 }}>
-      <p className="text-sm text-zinc-600">{NAMES[agent]}</p>
-      <div className="mt-1.5 space-y-1">
-        {lines.map((line) => (
-          <p key={line} className="text-[13px] leading-snug text-zinc-500">
-            {line}
-          </p>
-        ))}
+    <div ref={el} className="relative pl-4" style={{ opacity: 0 }}>
+      <span className="absolute left-0 top-2 h-full w-px bg-zinc-800" aria-hidden />
+      <div className="flex items-center gap-3">
+        {state === "live" ? <Sparkle /> : null}
+        <p
+          className={
+            state === "live"
+              ? "text-lg text-zinc-200"
+              : state === "done"
+                ? "text-base text-zinc-400"
+                : "text-base text-zinc-600"
+          }
+        >
+          {NAMES[id]}
+          {state === "waiting" ? (
+            <span className="ml-3 text-sm text-zinc-700">waiting</span>
+          ) : null}
+          {state === "done" ? (
+            <span className="ml-3 text-sm text-zinc-700">done</span>
+          ) : null}
+        </p>
       </div>
+
+      {state === "live" && looking.length > 0 ? (
+        <div className="mt-3 space-y-1">
+          <p className="text-sm text-zinc-600">Looking at</p>
+          {looking.map((line) => (
+            <p key={line} className="text-[13px] leading-snug text-zinc-500">
+              {line}
+            </p>
+          ))}
+        </div>
+      ) : null}
+
+      {state === "done" && found.length > 0 ? (
+        <div className="mt-3 space-y-1">
+          <p className="text-sm text-zinc-600">Found</p>
+          {found.map((line) => (
+            <p key={line} className="text-[13px] leading-snug text-zinc-500">
+              {line}
+            </p>
+          ))}
+        </div>
+      ) : null}
+
+      {handoff ? (
+        <p className="mt-3 text-[13px] leading-snug text-zinc-500">
+          Handoff → {handoff.to}
+          <span className="mt-1 block text-zinc-600">{handoff.note}</span>
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -205,23 +203,22 @@ export function Looking({
   thoughts?: SparkThought[];
   spark?: string;
 }) {
-  const cards = thoughts.filter((t) => t.lines.length > 0);
+  const seats: SeatId[] = ["scout", "contrarian", "builder"];
   return (
     <div>
       {spark ? (
         <FadeIn className="mb-8 line-clamp-2 text-sm text-zinc-600">{spark}</FadeIn>
       ) : null}
-      <div className="flex items-center gap-5">
-        <Sparkle />
-        <StatusLine phase={phase} />
+      <div className="space-y-8">
+        {seats.map((id) => (
+          <Seat
+            key={id}
+            id={id}
+            state={seatState(id, phase)}
+            found={foundFor(id, thoughts)}
+          />
+        ))}
       </div>
-      {cards.length > 0 ? (
-        <div className="mt-8 space-y-6 pl-[44px]">
-          {cards.map((t) => (
-            <ThoughtCard key={t.agent} agent={t.agent} lines={t.lines} />
-          ))}
-        </div>
-      ) : null}
     </div>
   );
 }
