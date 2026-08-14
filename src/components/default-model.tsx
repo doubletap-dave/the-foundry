@@ -91,7 +91,7 @@ export function DefaultModel({
             type="button"
             onClick={() => pickProvider(p.id)}
             className={cn(
-              "font-mono text-xs",
+              "text-sm",
               provider === p.id ? "text-ember" : "text-zinc-600 hover:text-zinc-300",
             )}
           >
@@ -100,7 +100,7 @@ export function DefaultModel({
         ))}
       </div>
       {!haveKey[provider] ? (
-        <p className="font-mono text-xs text-zinc-600">Add a key first.</p>
+        <p className="text-sm text-zinc-600">Add a key first.</p>
       ) : (
         <div className="relative max-w-md">
           <input
@@ -126,7 +126,7 @@ export function DefaultModel({
           {open ? (
             <ul className="absolute z-20 mt-1 max-h-48 w-full overflow-auto bg-zinc-950">
               {options.length === 0 ? (
-                <li className="py-2 font-mono text-xs text-zinc-600">
+                <li className="py-2 text-sm text-zinc-600">
                   {query.trim() ? `use “${query.trim()}”` : "type an id"}
                 </li>
               ) : (
@@ -135,7 +135,7 @@ export function DefaultModel({
                     <button
                       type="button"
                       className={cn(
-                        "w-full py-1.5 text-left font-mono text-sm hover:text-ember",
+                        "w-full py-1.5 text-left text-sm hover:text-ember",
                         m.id === model ? "text-ember" : "text-zinc-400",
                       )}
                       onMouseDown={(e) => e.preventDefault()}
@@ -160,12 +160,12 @@ export function DefaultModel({
           type="button"
           onClick={onSave}
           disabled={pending}
-          className="font-mono text-xs text-zinc-400 hover:text-zinc-100 disabled:opacity-40"
+          className="text-sm text-zinc-400 hover:text-zinc-100 disabled:opacity-40"
         >
           {pending ? "saving" : "save"}
         </button>
-        {saved ? <span className="font-mono text-xs text-zinc-600">ok</span> : null}
-        {err ? <span className="font-mono text-xs text-zinc-500">{err}</span> : null}
+        {saved ? <span className="text-sm text-zinc-600">ok</span> : null}
+        {err ? <span className="text-sm text-zinc-500">{err}</span> : null}
       </div>
     </div>
   );

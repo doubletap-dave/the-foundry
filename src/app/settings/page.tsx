@@ -30,7 +30,7 @@ export default async function SettingsPage() {
       <div className="mx-auto w-full max-w-lg space-y-16">
         <section className="space-y-8">
           <p className="text-sm text-zinc-500">Keys</p>
-          <p className="font-mono text-xs text-zinc-600">
+          <p className="text-xs text-zinc-600">
             Keys stay in this browser. Never on the server.
           </p>
           <KeysForm initial={keys} />
@@ -46,7 +46,7 @@ export default async function SettingsPage() {
             keySet={keySet}
           />
         </section>
-        <p className="font-mono text-xs text-zinc-700">
+        <p className="text-xs text-zinc-700">
           <Link href="/" className="hover:text-zinc-400">
             esc
           </Link>

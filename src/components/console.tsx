@@ -349,7 +349,7 @@ export function Console({ hasKey }: { hasKey: boolean }) {
           ) : null}
 
           {screen === "looking" ? (
-            <p className="font-mono text-sm text-zinc-500">
+            <p className="text-sm text-zinc-500">
               <span className="mr-2 inline-block h-2 w-2 animate-pulse bg-ember/80" />
               {lookLine}
             </p>
@@ -448,7 +448,7 @@ function Empty({
         className="w-full resize-none bg-transparent text-xl leading-relaxed text-zinc-200 outline-none placeholder:text-zinc-700 md:text-2xl"
       />
       <div className="mt-6 flex items-center justify-between gap-4">
-        <p className="font-mono text-xs text-zinc-600">
+        <p className="text-xs text-zinc-600">
           {error ? (
             <span className="text-zinc-400">
               {error}{" "}
@@ -473,7 +473,7 @@ function Empty({
           type="button"
           onClick={onSend}
           disabled={pending || text.trim().length === 0}
-          className="font-mono text-sm text-zinc-600 hover:text-zinc-300 disabled:opacity-30"
+          className="text-sm text-zinc-600 hover:text-zinc-300 disabled:opacity-30"
         >
           ↵
         </button>
@@ -534,7 +534,7 @@ function Ready({
       <Md className="text-xl leading-relaxed text-zinc-200 md:text-2xl md:leading-relaxed">
         {take}
       </Md>
-      {error ? <p className="mt-6 font-mono text-xs text-zinc-500">{error}</p> : null}
+      {error ? <p className="mt-6 text-xs text-zinc-500">{error}</p> : null}
       <div className="mt-12 flex flex-wrap items-center gap-x-8 gap-y-3">
         <WordButton onClick={onBuild} disabled={pending}>
           Build it
@@ -650,7 +650,7 @@ function BuiltLog({
   onOpen: (row: SparkView) => void;
 }) {
   if (rows.length === 0) {
-    return <p className="font-mono text-sm text-zinc-500">Nothing built yet.</p>;
+    return <p className="text-sm text-zinc-500">Nothing built yet.</p>;
   }
   return (
     <div className="space-y-8">
@@ -660,7 +660,7 @@ function BuiltLog({
           <li key={row.id}>
             <button type="button" onClick={() => onOpen(row)} className="block w-full text-left">
               <p className="text-lg leading-snug text-zinc-200 hover:text-zinc-50">{row.text}</p>
-              <p className="mt-1 font-mono text-xs text-zinc-600">
+              <p className="mt-1 text-xs text-zinc-600">
                 {row.hours ?? "—"}
                 {row.legs ? ` · ${row.legs}` : ""}
               </p>
