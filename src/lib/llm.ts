@@ -1,5 +1,6 @@
 import { ChatOpenAI } from "@langchain/openai";
 import { z } from "zod";
+import { chatSampling, isFixedTemperatureError } from "@/lib/chat-params";
 import { requestedChoice } from "@/lib/keys-context";
 import {
   defaultModelFor,
@@ -83,7 +84,7 @@ export function makeChat(
   provider: Provider,
   model: string,
   apiKey: string,
-  temperature: number,
+  temperature?: number,
   baseURL = PROVIDER_META[provider].baseURL,
 ): ChatOpenAI {
   const configuration: {
@@ -96,10 +97,12 @@ export function makeChat(
       "X-Title": "The Foundry",
     };
   }
+  const sampling =
+    temperature === undefined ? {} : chatSampling(model, temperature);
   return new ChatOpenAI({
     apiKey,
     model,
-    temperature,
+    ...sampling,
     maxRetries: 1,
     timeout: 90_000,
     configuration,
@@ -216,6 +219,14 @@ export async function structuredCall<T>(
     return { ...result, provider: first.provider, model: first.model };
   } catch (err) {
     const msg = sanitizeError(err);
+    if (isFixedTemperatureError(msg) && temperature !== undefined) {
+      const key = readKey(first.provider);
+      if (key) {
+        const retry = makeChat(first.provider, first.model, key);
+        const result = await tryOnce(retry);
+        return { ...result, provider: first.provider, model: first.model };
+      }
+    }
     if (first.provider === "perplexity" && /404/.test(msg)) {
       const key = readKey("perplexity");
       if (key) {
